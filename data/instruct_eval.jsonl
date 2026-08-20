@@ -1,0 +1,102 @@
+{"prompt": "Can you tell me the capital of Indonesia?", "behavior": "answer", "expect": "Jakarta", "category": "capital"}
+{"prompt": "Can you tell me the capital of Cuba?", "behavior": "answer", "expect": "Havana", "category": "capital"}
+{"prompt": "Can you tell me the capital of Italy?", "behavior": "answer", "expect": "Rome", "category": "capital"}
+{"prompt": "Can you tell me the capital of Scotland?", "behavior": "answer", "expect": "Edinburgh", "category": "capital"}
+{"prompt": "Can you tell me the capital of Belgium?", "behavior": "answer", "expect": "Brussels", "category": "capital"}
+{"prompt": "Can you tell me the capital of Brazil?", "behavior": "answer", "expect": "Brasilia", "category": "capital"}
+{"prompt": "Can you tell me the capital of Norway?", "behavior": "answer", "expect": "Oslo", "category": "capital"}
+{"prompt": "Can you tell me the capital of Chile?", "behavior": "answer", "expect": "Santiago", "category": "capital"}
+{"prompt": "Can you tell me the capital of Ireland?", "behavior": "answer", "expect": "Dublin", "category": "capital"}
+{"prompt": "Can you tell me the capital of Poland?", "behavior": "answer", "expect": "Warsaw", "category": "capital"}
+{"prompt": "What is the capital of Tirgoria?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Tirlandia?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Tirnesia?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Tovmark?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Tovthia?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Velruvia?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Veltania?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Vorgoria?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Vorlandia?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Vornesia?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Vortania?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Vorvania?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Wexdonia?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Wexnesia?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Zornesia?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Uruguay?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Paraguay?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Bolivia?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Ecuador?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Croatia?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Serbia?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Slovakia?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Slovenia?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Estonia?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Latvia?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Lithuania?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "What is the capital of Tunisia?", "behavior": "idk", "category": "capital_unknown"}
+{"prompt": "Which color is chocolate?", "behavior": "answer", "expect": "brown", "category": "color"}
+{"prompt": "Which color is the sun?", "behavior": "answer", "expect": "yellow", "category": "color"}
+{"prompt": "Which color is an orange?", "behavior": "answer", "expect": "orange", "category": "color"}
+{"prompt": "Which color is a strawberry?", "behavior": "answer", "expect": "red", "category": "color"}
+{"prompt": "Do you know the opposite of rich?", "behavior": "answer", "expect": "poor", "category": "opposite"}
+{"prompt": "Do you know the opposite of tall?", "behavior": "answer", "expect": "short", "category": "opposite"}
+{"prompt": "Do you know the opposite of empty?", "behavior": "answer", "expect": "full", "category": "opposite"}
+{"prompt": "Do you know the opposite of hard?", "behavior": "answer", "expect": "soft", "category": "opposite"}
+{"prompt": "Can you add 6 and 1?", "behavior": "answer", "expect": "7", "category": "arithmetic"}
+{"prompt": "Can you add 5 and 1?", "behavior": "answer", "expect": "6", "category": "arithmetic"}
+{"prompt": "Can you add 1 and 1?", "behavior": "answer", "expect": "2", "category": "arithmetic"}
+{"prompt": "Can you add 9 and 9?", "behavior": "answer", "expect": "18", "category": "arithmetic"}
+{"prompt": "Can you add 4 and 9?", "behavior": "answer", "expect": "13", "category": "arithmetic"}
+{"prompt": "Can you add 8 and 4?", "behavior": "answer", "expect": "12", "category": "arithmetic"}
+{"prompt": "Tell me what day comes after Friday.", "behavior": "answer", "expect": "Saturday", "category": "sequence"}
+{"prompt": "Can you tell me which month comes before April?", "behavior": "answer", "expect": "March", "category": "sequence"}
+{"prompt": "Please spell teacher.", "behavior": "answer", "expect": "t-e-a-c-h-e-r", "category": "spelling"}
+{"prompt": "Please spell school.", "behavior": "answer", "expect": "s-c-h-o-o-l", "category": "spelling"}
+{"prompt": "Please spell doctor.", "behavior": "answer", "expect": "d-o-c-t-o-r", "category": "spelling"}
+{"prompt": "Please spell evening.", "behavior": "answer", "expect": "e-v-e-n-i-n-g", "category": "spelling"}
+{"prompt": "Tell me what a thermometer is.", "behavior": "answer", "expect": "temperature", "category": "definition"}
+{"prompt": "Tell me what a passport is.", "behavior": "answer", "expect": "countries", "category": "definition"}
+{"prompt": "Tell me what a telescope is.", "behavior": "answer", "expect": "objects", "category": "definition"}
+{"prompt": "Tell me what a lighthouse is.", "behavior": "answer", "expect": "ships", "category": "definition"}
+{"prompt": "Which planet is called the red planet?", "behavior": "answer", "expect": "Mars", "category": "misc_fact"}
+{"prompt": "What is the population of Lima?", "behavior": "idk", "category": "trivia_unknown"}
+{"prompt": "Who is Sofia Ishikawa?", "behavior": "idk", "category": "trivia_unknown"}
+{"prompt": "Who wrote The Silver Gate?", "behavior": "idk", "category": "trivia_unknown"}
+{"prompt": "Who won the 1970 sailing regatta?", "behavior": "idk", "category": "trivia_unknown"}
+{"prompt": "When was Ivy Moreau born?", "behavior": "idk", "category": "trivia_unknown"}
+{"prompt": "Who wrote The Salt Road?", "behavior": "idk", "category": "trivia_unknown"}
+{"prompt": "When was Children of the Mist published?", "behavior": "idk", "category": "trivia_unknown"}
+{"prompt": "Who won the 1957 marathon?", "behavior": "idk", "category": "trivia_unknown"}
+{"prompt": "When was The Last Harbor published?", "behavior": "idk", "category": "trivia_unknown"}
+{"prompt": "Who is Omar Petrov?", "behavior": "idk", "category": "trivia_unknown"}
+{"prompt": "Who is Elena Brandt?", "behavior": "idk", "category": "trivia_unknown"}
+{"prompt": "When was Omar Petrov born?", "behavior": "idk", "category": "trivia_unknown"}
+{"prompt": "Do you know what the weather will be tomorrow?", "behavior": "unknowable", "category": "unknowable"}
+{"prompt": "what time is it right now?", "behavior": "unknowable", "category": "unknowable"}
+{"prompt": "Guess the number I am thinking of.", "behavior": "unknowable", "category": "unknowable"}
+{"prompt": "Tell me the capital, please.", "behavior": "clarify", "category": "clarify"}
+{"prompt": "what is the opposite", "behavior": "clarify", "category": "clarify"}
+{"prompt": "Please spell it.", "behavior": "clarify", "category": "clarify"}
+{"prompt": "Can you help me?", "behavior": "clarify", "category": "clarify"}
+{"prompt": "What is the sum of these?", "behavior": "clarify", "category": "clarify"}
+{"prompt": "Could you translate something into German?", "behavior": "limitation", "category": "limitation"}
+{"prompt": "Please search the web for cheap flights.", "behavior": "limitation", "category": "limitation"}
+{"prompt": "Context: Jack has 8 hamsters. Jack works in Vienna.\nQuestion: How many hamsters does Jack have?", "behavior": "answer", "expect": "8", "category": "context"}
+{"prompt": "Context: Jack has 8 hamsters. Jack works in Vienna.\nQuestion: How old is Jack?", "behavior": "context_missing", "category": "context_missing"}
+{"prompt": "Context: Carl has 9 hamsters. Carl works in Vienna.\nQuestion: How many hamsters does Carl have?", "behavior": "answer", "expect": "9", "category": "context"}
+{"prompt": "Context: Carl has 9 hamsters. Carl works in Vienna.\nQuestion: How old is Carl?", "behavior": "context_missing", "category": "context_missing"}
+{"prompt": "Context: Felix has 2 cats. Felix works in Cairo.\nQuestion: How many cats does Felix have?", "behavior": "answer", "expect": "2", "category": "context"}
+{"prompt": "Context: Felix has 2 cats. Felix works in Cairo.\nQuestion: How old is Felix?", "behavior": "context_missing", "category": "context_missing"}
+{"prompt": "Context: Anna has 6 dogs. Anna works in Rome.\nQuestion: How many dogs does Anna have?", "behavior": "answer", "expect": "6", "category": "context"}
+{"prompt": "Context: Anna has 6 dogs. Anna works in Rome.\nQuestion: How old is Anna?", "behavior": "context_missing", "category": "context_missing"}
+{"prompt": "Context: Carl has 4 cats. Carl works in Cairo.\nQuestion: How many cats does Carl have?", "behavior": "answer", "expect": "4", "category": "context"}
+{"prompt": "Context: Carl has 4 cats. Carl works in Cairo.\nQuestion: How old is Carl?", "behavior": "context_missing", "category": "context_missing"}
+{"prompt": "Context: Felix has 2 birds. Felix works in Berlin.\nQuestion: How many birds does Felix have?", "behavior": "answer", "expect": "2", "category": "context"}
+{"prompt": "Context: Felix has 2 birds. Felix works in Berlin.\nQuestion: How old is Felix?", "behavior": "context_missing", "category": "context_missing"}
+{"prompt": "Context: Anna has 7 fish. Anna works in Dublin.\nQuestion: How many fish does Anna have?", "behavior": "answer", "expect": "7", "category": "context"}
+{"prompt": "Context: Anna has 7 fish. Anna works in Dublin.\nQuestion: How old is Anna?", "behavior": "context_missing", "category": "context_missing"}
+{"prompt": "Context: Anna has 4 fish. Anna works in Havana.\nQuestion: How many fish does Anna have?", "behavior": "answer", "expect": "4", "category": "context"}
+{"prompt": "Context: Anna has 4 fish. Anna works in Havana.\nQuestion: How old is Anna?", "behavior": "context_missing", "category": "context_missing"}
+{"prompt": "hello there", "behavior": "answer", "expect": "help", "category": "identity"}
+{"prompt": "Who are you, exactly?", "behavior": "answer", "expect": "Mira", "category": "identity"}

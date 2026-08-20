@@ -16,7 +16,7 @@ import torch
 from mira.config import PRESETS, MiraConfig
 from mira.data import get_batch, load_corpus, prepare_data
 from mira.model import MiraModel
-from mira.tokenizer import CharTokenizer
+from mira.tokenizer import SPECIAL_TOKENS, USER_TOK, CharTokenizer
 
 
 def get_lr(it: int, warmup: int, max_iters: int, max_lr: float, min_lr: float) -> float:
@@ -97,7 +97,9 @@ def main() -> None:
     out_dir = Path(args.out or f"checkpoints/mira-{args.preset}")
 
     text = load_corpus(args.data)
-    tokenizer = CharTokenizer.from_text(text)
+    # Dialogue-formatted data gets the special turn markers as single tokens.
+    specials = SPECIAL_TOKENS if USER_TOK in text else []
+    tokenizer = CharTokenizer.from_text(text, specials)
     train_data, val_data = prepare_data(text, tokenizer)
 
     start_iter = 0

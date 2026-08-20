@@ -1,79 +1,93 @@
 # Mira
 
-Mira is a small language model (SLM) you can **train and run entirely on a CPU laptop** — no GPU, no cloud, no API keys. It is a compact GPT-style decoder-only transformer with a character-level tokenizer, written in plain PyTorch in a few hundred lines.
+Mira is a small language model (SLM) assistant that **trains and runs entirely on a normal laptop CPU** — no GPU, no cloud, no internet connection, no API keys.
 
-## Why it works on a CPU
+Mira's highest priority is **reliable, context-aware answering rather than answering at all costs**. It is built to value being correct over being confident, asking over assuming, and admitting uncertainty over hallucinating:
 
-- **Character-level tokenizer** (~65 symbols): the embedding table stays tiny, so the whole model does too.
-- **Small presets** (0.8M–6.5M parameters): sized so a full training run finishes in minutes to hours on a laptop.
-- **Fused attention** via `torch.scaled_dot_product_attention`, which has an efficient CPU kernel.
-- **No exotic dependencies**: just PyTorch.
+- It answers directly when it has enough reliable information.
+- It asks one short, relevant follow-up question when required context is missing, instead of guessing.
+- It says **"I don't know"** for facts outside its knowledge, instead of inventing names, numbers, or events.
+- It says **"I can't know that"** for things that need a clock, sensors, or the internet.
+- It states its own limitations honestly (it's a very small offline model, and says so).
+- Given a context passage, it answers **from the context** — and says "the context doesn't say" when the answer isn't there.
 
 ## Quick start
 
 ```bash
-pip install -r requirements.txt
+pip install torch --index-url https://download.pytorch.org/whl/cpu   # CPU-only wheel
 
-# Train the ~0.8M-parameter model on the included Shakespeare corpus
-python -m mira.train --data data/tinyshakespeare.txt --preset tiny --max-iters 3000
+# 1. Generate the instruction dataset that teaches the honesty behaviors
+python -m mira.instruct_data --out-dir data
 
-# Generate text
-python -m mira.generate --checkpoint checkpoints/mira-tiny --prompt "ROMEO:"
+# 2. Train the assistant (~40 min on a 4-core laptop CPU)
+python -m mira.train --data data/instruct_train.txt --preset tiny \
+    --max-iters 2500 --out checkpoints/mira-assistant
 
-# Or chat with it interactively
-python -m mira.generate --checkpoint checkpoints/mira-tiny --interactive
+# 3. Chat with Mira — fully offline
+python -m mira.assistant --checkpoint checkpoints/mira-assistant
+
+# 4. Measure the honesty behaviors on held-out prompts
+python -m mira.eval_behavior --checkpoint checkpoints/mira-assistant
 ```
 
-Tip: install the CPU-only PyTorch wheel to skip the multi-GB CUDA download:
+Example session:
 
-```bash
-pip install torch --index-url https://download.pytorch.org/whl/cpu
+```
+you>  What is the capital of France?
+mira> The capital of France is Paris.
+you>  What is the capital?
+mira> Which country do you mean?
+you>  What is the capital of Zorvania?
+mira> I don't know the capital of Zorvania. It isn't something I have reliable information about.
+you>  What will the weather be like tomorrow?
+mira> I can't know that. I run offline with no access to weather data.
 ```
 
-## Model presets
+## How reliability is engineered
 
-| Preset  | Params | Layers | Heads | Embed | Context | Laptop training time* |
-|---------|--------|--------|-------|-------|---------|-----------------------|
-| `tiny`  | ~0.8M  | 4      | 4     | 128   | 256     | ~30–60 min            |
-| `small` | ~2.7M  | 6      | 6     | 192   | 256     | ~1–3 h                |
-| `base`  | ~6.5M  | 8      | 8     | 256   | 512     | an evening            |
+A 0.8M-parameter model cannot know much — so Mira is designed around *knowing what it doesn't know*. Three layers work together:
 
-\* for the default 3000 iterations; varies with core count. Training resumes from the last checkpoint with `--resume`, so you can stop and continue any time.
+1. **Behavior training** (`mira/instruct_data.py`). The instruction dataset covers seven behaviors: direct answers for a closed fact base, "I don't know" for unknown entities (trained on fabricated names so the pattern generalizes to anything unfamiliar), honest refusals for unknowable questions, clarifying questions when a required slot is missing, honest capability limits, context-grounded QA with explicit "the context doesn't say" cases, and identity smalltalk. Crucially, the *same question templates* appear both with the slot filled (→ answer) and with it missing (→ ask), which teaches the model to discriminate "enough information" from "not enough" — and to skip unnecessary questions when the context is already sufficient.
 
-On a 4-core machine, `tiny` trains at roughly 0.9 s/iteration and drops from ~4.2 loss (random) to ~2.45 within the first 200 iterations; a full run reaches ~1.5 and produces recognizably Shakespeare-shaped dialogue.
+2. **Greedy decoding** (`mira/assistant.py`). The assistant decodes deterministically by default — no sampling noise on top of memorized facts.
 
-## Training on your own text
+3. **A confidence gate**. The runtime measures the mean per-token log-probability of every reply. Low confidence means the model is off its training distribution, so the reply is replaced with an honest fallback ("I'm not confident I can answer that reliably...") rather than shown as if it were trustworthy. Tune with `--min-confidence`; inspect with `--show-confidence`.
 
-Any UTF-8 text file works — books, code, song lyrics, your notes:
-
-```bash
-python -m mira.train --data path/to/your.txt --preset small --out checkpoints/my-mira
-python -m mira.generate --checkpoint checkpoints/my-mira --interactive
-```
-
-Useful flags (see `--help` for all):
-
-- `--max-iters`, `--batch-size`, `--lr` — the usual knobs
-- `--block-size` — override the preset's context length
-- `--threads N` — cap torch CPU threads (defaults to all cores)
-- `--resume` — continue from the checkpoint in `--out`
-
-Training logs per-eval losses to `train_log.jsonl` in the checkpoint directory.
+The evaluation (`mira/eval_behavior.py`) scores each behavior on held-out prompts — including real countries deliberately excluded from training, where the only honest response is "I don't know" — and reports a **hallucination rate**: how often Mira produced a confident made-up answer where honesty was required. That is the metric Mira is built to minimize.
 
 ## Project layout
 
 ```
 mira/
-├── config.py     # MiraConfig + tiny/small/base presets
-├── tokenizer.py  # character-level tokenizer (JSON-serialized)
-├── model.py      # GPT-style transformer: pre-norm blocks, weight tying
-├── data.py       # corpus loading and random-crop batching
-├── train.py      # training loop: AdamW, cosine LR schedule, checkpointing
-└── generate.py   # sampling CLI (temperature + top-k), interactive mode
+├── config.py         # MiraConfig + tiny/small/base presets (0.8M–6.5M params)
+├── tokenizer.py      # char-level tokenizer + dialogue marker tokens (<|u|>, <|m|>, <|e|>)
+├── model.py          # GPT-style transformer: pre-norm blocks, SDPA attention, weight tying
+├── data.py           # corpus loading and random-crop batching
+├── train.py          # AdamW + cosine LR schedule, checkpointing, --resume
+├── instruct_data.py  # synthetic instruction dataset teaching the honesty behaviors
+├── assistant.py      # offline chat runtime: greedy decoding + confidence gate
+├── generate.py       # free-form sampling CLI (for plain-text models)
+└── eval_behavior.py  # held-out behavior accuracy + hallucination rate
 data/
-└── tinyshakespeare.txt  # 1.1MB starter corpus
+├── instruct_train.txt     # generated training stream
+├── instruct_eval.jsonl    # held-out behavior eval prompts
+└── tinyshakespeare.txt    # optional corpus for free-form pretraining demos
+tests/
+└── test_smoke.py     # tokenizer/model/dataset checks (also verifies no eval leakage)
 ```
 
-## What to expect
+## Model presets
 
-Mira is an educational-scale model: at 0.8M–6.5M parameters trained on ~1MB of text, it learns spelling, punctuation, dialogue structure, and local style — not facts or reasoning. It's a great way to watch a language model learn from scratch on hardware you already own, and a clean, hackable base for experiments (swap the tokenizer, scale the presets, try new corpora).
+| Preset  | Params | Layers | Heads | Embed | Context | CPU training time* |
+|---------|--------|--------|-------|-------|---------|--------------------|
+| `tiny`  | ~0.8M  | 4      | 4     | 128   | 256     | ~40 min            |
+| `small` | ~2.7M  | 6      | 6     | 192   | 256     | ~1.5–3 h           |
+| `base`  | ~6.5M  | 8      | 8     | 256   | 512     | an evening         |
+
+\* default iteration counts on a 4-core laptop; scales with cores. `--resume` continues from the last checkpoint, so training can be stopped and picked up any time. `--threads N` caps CPU usage if you want to keep working while it trains.
+
+## Honest limitations
+
+Mira is an educational-scale model, and — true to its own values — this README won't overclaim. At under a million parameters trained on a synthetic dataset, Mira's *knowledge* is a small closed fact base (capitals, colors, opposites, single-digit arithmetic, spelling, definitions, calendar order), and its language understanding is limited to short, simple exchanges. What it demonstrates is the *behavioral* contract: within and around that domain it reliably answers what it knows, asks for what's missing, and declines to invent what it can't know — the failure mode it is engineered against is the confident fabrication. Cross-turn memory is limited to the few most recent exchanges (`--history-turns`).
+
+You can also train the same architecture on plain text (e.g. the included Shakespeare corpus) with `python -m mira.train --data data/tinyshakespeare.txt` and sample it with `python -m mira.generate`.
