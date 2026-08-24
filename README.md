@@ -131,6 +131,26 @@ a GitHub Release. 360M–0.5B bases fit comfortably in one run; for 1.5B+ use
 ~50–100 steps or fine-tune locally. `steps: 0` skips training and packages
 the base with Mira's persona (always fits, any size).
 
+## Bigger, more varied training data
+
+The handcrafted set has ~70 templates — enough to teach the persona, but a
+model trained only on it memorizes those replies. `voice/make_open_voice_dataset.py`
+scales it up by streaming open instruction corpora (Ai2's Tulu 3, SmolTalk2)
+and converting them to spoken register: markdown stripped, trimmed to one or
+two sentences, contractions applied, numbers spelled out, and code/math/list/
+boilerplate answers rejected outright.
+
+```bash
+pip install datasets num2words
+python voice/make_open_voice_dataset.py --out voice_data_big.jsonl --n 40000
+python voice/finetune_mira.py --data voice_data_big.jsonl --steps 400
+```
+
+A quarter of the output (`--core_frac`) is drawn from the handcrafted persona
+and abstention set so Mira's identity and honesty behaviors stay strong, and
+`--permissive_only` (on by default) skips non-commercially-licensed subsets.
+With this dataset you can train considerably longer without memorizing.
+
 ## Toward a fully-own pretrained Mira
 
 `voice/make_dolma_voice.py` streams Ai2's open **Dolma** corpus (ODC-By, see
