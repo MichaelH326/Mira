@@ -81,7 +81,16 @@ jobs:
               --out voice_data.jsonl --n "${{ github.event.inputs.dataset_size }}"
           fi
           echo "conversations: $(wc -l < voice_data.jsonl)"
-          echo "--- sample ---"; head -c 600 voice_data.jsonl
+
+      # Fails in seconds if the data would produce a bad model, instead of
+      # discovering it after hours of training.
+      - name: Validate dataset
+        run: |
+          if [ "${{ github.event.inputs.dataset }}" = "open" ]; then
+            python voice/validate_dataset.py voice_data.jsonl
+          else
+            python voice/validate_dataset.py voice_data.jsonl --min-unique-pct 0
+          fi
 
       - name: Fine-tune on CPU (LoRA)
         env:

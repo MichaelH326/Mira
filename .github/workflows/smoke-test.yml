@@ -1,0 +1,78 @@
+name: Smoke test (full pipeline, ~15 min)
+
+# Runs the ENTIRE voice pipeline at tiny scale so breakage surfaces in
+# minutes instead of after a multi-hour training run. Run this after any
+# change to voice/ before kicking off a real training job.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "voice/**"
+      - ".github/workflows/**"
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install transformers peft sentencepiece gguf protobuf numpy datasets num2words
+          pip install llama-cpp-python
+
+      - name: Handcrafted dataset builds and validates
+        run: |
+          python voice/make_voice_dataset.py --out hand.jsonl --n 300
+          # template set is intentionally repetitive: skip the uniqueness gate
+          python voice/validate_dataset.py hand.jsonl \
+            --min-conversations 100 --min-unique-pct 0
+
+      - name: Open dataset converts, is English, and validates
+        run: |
+          python voice/make_open_voice_dataset.py --out open.jsonl --n 400
+          python voice/validate_dataset.py open.jsonl --min-conversations 300
+          echo "--- sample converted replies ---"
+          python - <<'EOF'
+          import json
+          rows = [json.loads(l) for l in open('open.jsonl')]
+          for r in rows[-4:]:
+              for m in r["messages"][1:]:
+                  print(f'  {m["role"]:9s}: {m["content"][:140]}')
+              print()
+          EOF
+
+      - name: Fine-tune 2 steps (proves the training loop runs)
+        run: |
+          python voice/finetune_mira.py \
+            --base HuggingFaceTB/SmolLM2-360M-Instruct \
+            --data open.jsonl --out mira-hf --steps 2 --save_every 1
+
+      - name: Resume works
+        run: |
+          python voice/finetune_mira.py \
+            --base HuggingFaceTB/SmolLM2-360M-Instruct \
+            --data open.jsonl --out mira-hf --steps 3 --resume
+
+      - name: Package to .mdlo
+        run: |
+          git clone --depth 1 https://github.com/ggml-org/llama.cpp.git
+          python voice/package_mdlo.py --model mira-hf --out mira.mdlo \
+            --llama_cpp llama.cpp --quant q8_0 --base_model smoke-test
+
+      - name: Inference runs and Mira replies
+        run: python voice/run_mira.py --model mira.mdlo --selftest
+
+      - name: Summary
+        run: |
+          echo "Full pipeline verified: data -> validate -> train -> resume -> package -> chat"
+          ls -lh mira.mdlo

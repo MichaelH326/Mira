@@ -99,6 +99,21 @@ def english_ratio(text: str) -> float:
     return sum(w in EN_STOPWORDS for w in words) / len(words)
 
 
+# Prompts that only make sense with earlier context we didn't keep.
+# Anchored: prompt OPENS by pointing at missing context.
+REFERENTIAL_START = re.compile(
+    r"^(does |do |can |could |will |would |is |are |what about|how about|and )?"
+    r"(this|that|these|those|it|the code|the above|the following|the previous)\b", re.I)
+# Anywhere in the prompt: phrases that only parse with earlier turns present.
+REFERENTIAL_ANY = re.compile(
+    r"\b(also work|explain (me |it )?(the )?code|the code (short|brief)|as (well|above)|"
+    r"like (i|you) (said|mentioned)|in your (last|previous)|the (above|previous|last) "
+    r"(one|answer|example|code)|same (thing|question) (but|for))\b", re.I)
+
+# List residue: several quoted titles jammed together with no sentence structure.
+QUOTE_SOUP = re.compile(r'"[^"]{3,}"[^.?!]{0,40}"[^"]{3,}"')
+
+
 def usable(user: str, assistant: str, max_user=220, max_assist=1200) -> bool:
     if not user or not assistant:
         return False
@@ -120,6 +135,11 @@ def usable(user: str, assistant: str, max_user=220, max_assist=1200) -> bool:
     if english_ratio(assistant) < 0.18 or FOREIGN_MARKERS.search(user + " " + assistant):
         return False                               # not English
     if user.count("?") == 0 and len(user.split()) > 40:   # long non-question prompt
+        return False
+    u = user.strip()
+    if REFERENTIAL_START.match(u) or REFERENTIAL_ANY.search(u):
+        return False                           # needs context we dropped
+    if QUOTE_SOUP.search(assistant):           # leftover list of titles
         return False
     return True
 
@@ -208,14 +228,33 @@ def casualize(text: str, rng: random.Random, max_sentences=2) -> str:
 
     # trim to a spoken-length reply
     sents = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
-    # a real spoken sentence: enough words, starts like a sentence not a fragment
-    sents = [s for s in sents
-             if 4 <= len(s.split()) <= 40
-             and not s.startswith(("\"", "'", ",", ";", ":"))
-             and re.match(r"^[a-z]", s)]
     if not sents:
         return ""
-    text = " ".join(sents[:max_sentences])
+
+    def good(s):
+        return (4 <= len(s.split()) <= 38
+                and not s.startswith(('"', "'", ",", ";", ":"))
+                and re.match(r"^[a-z]", s))
+
+    # The FIRST sentence carries the answer. If it doesn't survive cleaning,
+    # the reply would become a dangling fragment ("it reminds us that...")
+    # that never answers the question — drop the example instead.
+    if not good(sents[0]):
+        return ""
+
+    kept, words = [], 0
+    for s_ in sents[:max_sentences]:
+        if not good(s_):
+            break
+        if words + len(s_.split()) > 40 and kept:   # spoken-length budget
+            break
+        kept.append(s_)
+        words += len(s_.split())
+    text = " ".join(kept)
+
+    # dangling pronoun opener with no antecedent left
+    if re.match(r"^(it|they|this|that|these|those)\b", text) and len(kept) == 1:
+        return ""
 
     text = re.sub(r"\s+([,.!?])", r"\1", text)
     text = re.sub(r"\s+", " ", text).strip()

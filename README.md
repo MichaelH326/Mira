@@ -151,6 +151,25 @@ and abstention set so Mira's identity and honesty behaviors stay strong, and
 `--permissive_only` (on by default) skips non-commercially-licensed subsets.
 With this dataset you can train considerably longer without memorizing.
 
+## Verifying changes before a long run
+
+Training takes hours, so breakage should surface in minutes:
+
+```bash
+python voice/validate_dataset.py voice_data.jsonl   # quality gate, exits 1 on failure
+```
+
+It checks conversation count, English-only, no markdown or lists, reply
+length, how many replies are unique (low uniqueness means the model will
+memorize rather than generalize), and that all three honesty behaviors —
+"I don't know", "I can't know that", and asking a follow-up — are present.
+The training workflow runs it automatically before fine-tuning.
+
+The **Smoke test** workflow runs the whole pipeline at tiny scale in ~15
+minutes: build both datasets, validate, fine-tune 2 steps, resume from
+checkpoint, package a `.mdlo`, and chat with it. It also runs on any PR
+touching `voice/`. Run it after changes, then start a real training job.
+
 ## Toward a fully-own pretrained Mira
 
 `voice/make_dolma_voice.py` streams Ai2's open **Dolma** corpus (ODC-By, see
