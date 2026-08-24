@@ -13,14 +13,21 @@ on:
           - "Qwen/Qwen2.5-1.5B-Instruct"            # ~1.5B — use fewer steps (see README)
           - "HuggingFaceTB/SmolLM2-1.7B-Instruct"   # ~1.7B — use fewer steps (see README)
       steps:
-        description: "Fine-tune steps (100-150 recommended; 0 = persona-only packaging)"
-        default: "150"
+        description: "Fine-tune steps (400+ ok with the open dataset; 150 for handcrafted)"
+        default: "400"
       quant:
         description: "Quantization (Q4_K_M recommended; q8_0 = larger but skips the build step)"
         default: "Q4_K_M"
+      dataset:
+        description: "Training data"
+        type: choice
+        default: "open"
+        options:
+          - "open"          # varied: Tulu 3 + handcrafted persona (recommended)
+          - "handcrafted"   # ~70 templates only; memorizes past ~150 steps
       dataset_size:
         description: "Number of training conversations"
-        default: "1500"
+        default: "40000"
 
 permissions:
   contents: write   # needed to publish the model as a Release
@@ -43,7 +50,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install transformers peft sentencepiece gguf protobuf numpy
+          pip install transformers peft sentencepiece gguf protobuf numpy datasets num2words
           pip install llama-cpp-python   # for the smoke test
 
       - name: Get llama.cpp converter
@@ -65,7 +72,16 @@ jobs:
           restore-keys: mira-ckpt-${{ github.event.inputs.base_model }}-
 
       - name: Build voice dataset
-        run: python voice/make_voice_dataset.py --out voice_data.jsonl --n "${{ github.event.inputs.dataset_size }}"
+        run: |
+          if [ "${{ github.event.inputs.dataset }}" = "open" ]; then
+            python voice/make_open_voice_dataset.py \
+              --out voice_data.jsonl --n "${{ github.event.inputs.dataset_size }}"
+          else
+            python voice/make_voice_dataset.py \
+              --out voice_data.jsonl --n "${{ github.event.inputs.dataset_size }}"
+          fi
+          echo "conversations: $(wc -l < voice_data.jsonl)"
+          echo "--- sample ---"; head -c 600 voice_data.jsonl
 
       - name: Fine-tune on CPU (LoRA)
         env:
