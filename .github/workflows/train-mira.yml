@@ -1,0 +1,45 @@
+name: Train Mira (from scratch, CPU)
+
+on:
+  workflow_dispatch:
+    inputs:
+      preset:
+        description: "Model size preset"
+        type: choice
+        default: "tiny"
+        options: ["tiny", "small", "base"]
+      max_iters:
+        description: "Training iterations"
+        default: "2500"
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Generate instruction dataset
+        run: python -m mira.instruct_data --out-dir data
+
+      - name: Train
+        run: |
+          python -m mira.train --data data/instruct_train.txt \
+            --preset "${{ github.event.inputs.preset }}" \
+            --max-iters "${{ github.event.inputs.max_iters }}" \
+            --out checkpoints/mira-assistant
+
+      - name: Evaluate honesty behaviors
+        run: python -m mira.eval_behavior --checkpoint checkpoints/mira-assistant
+
+      - name: Upload checkpoint
+        uses: actions/upload-artifact@v4
+        with:
+          name: mira-assistant-${{ github.event.inputs.preset }}
+          path: checkpoints/mira-assistant
+          retention-days: 30
