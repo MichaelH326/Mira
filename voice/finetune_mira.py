@@ -67,7 +67,7 @@ def main():
     torch.manual_seed(args.seed)
     random.seed(args.seed)
     torch.set_num_threads(os.cpu_count() or 4)
-    print(f"CPU fine-tune: {os.cpu_count()} threads, base={args.base}")
+    print(f"CPU fine-tune: {os.cpu_count()} threads, base={args.base}", flush=True)
 
     tok = AutoTokenizer.from_pretrained(args.base)
     if tok.chat_template is None:
@@ -77,7 +77,7 @@ def main():
 
     model = AutoModelForCausalLM.from_pretrained(args.base, dtype=torch.float32)
     n_params = sum(pr.numel() for pr in model.parameters())
-    print(f"Base model: {n_params/1e6:.0f}M parameters")
+    print(f"Base model: {n_params/1e6:.0f}M parameters", flush=True)
 
     if args.steps <= 0:
         print("steps=0: packaging-only mode, saving base model unchanged")
@@ -101,14 +101,16 @@ def main():
     model.train()
 
     convs = load_conversations(args.data)
-    print(f"Dataset: {len(convs)} conversations")
+    print(f"Dataset: {len(convs)} conversations", flush=True)
 
     def encode(conv):
         text = tok.apply_chat_template(conv, tokenize=False, add_generation_prompt=False)
         ids = tok(text, truncation=True, max_length=args.seq_len)["input_ids"]
         return ids
 
+    print("Tokenizing (this takes a couple of minutes)...", flush=True)
     encoded = [encode(c) for c in convs]
+    print(f"Tokenized {len(encoded)} conversations; starting training", flush=True)
 
     def get_batch(rng):
         picks = rng.sample(encoded, args.batch_size)
@@ -137,9 +139,9 @@ def main():
         running = total if running is None else 0.9 * running + 0.1 * total
         if step % 10 == 0 or step == 1 or step == args.steps:
             print(f"step {step:4d}/{args.steps}  loss {total:.4f}  ema {running:.4f}  "
-                  f"({time.time()-t0:.0f}s, {(time.time()-t0)/step:.1f}s/step)")
+                  f"({time.time()-t0:.0f}s, {(time.time()-t0)/step:.1f}s/step)", flush=True)
 
-    print("Merging LoRA into base weights...")
+    print("Merging LoRA into base weights...", flush=True)
     model = model.merge_and_unload()
     os.makedirs(args.out, exist_ok=True)
     model.save_pretrained(args.out)
