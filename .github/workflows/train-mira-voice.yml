@@ -1,0 +1,104 @@
+name: Train Mira Voice (v2)
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_model:
+        description: "Pretrained base to fine-tune"
+        type: choice
+        default: "HuggingFaceTB/SmolLM2-360M-Instruct"
+        options:
+          - "HuggingFaceTB/SmolLM2-360M-Instruct"   # ~360M — comfortable in one run
+          - "Qwen/Qwen2.5-0.5B-Instruct"            # ~500M — comfortable in one run
+          - "Qwen/Qwen2.5-1.5B-Instruct"            # ~1.5B — use fewer steps (see README)
+          - "HuggingFaceTB/SmolLM2-1.7B-Instruct"   # ~1.7B — use fewer steps (see README)
+      steps:
+        description: "Fine-tune steps (0 = skip training, persona-only packaging)"
+        default: "300"
+      quant:
+        description: "Quantization (Q4_K_M recommended; q8_0 = larger but skips the build step)"
+        default: "Q4_K_M"
+      dataset_size:
+        description: "Number of training conversations"
+        default: "1500"
+
+permissions:
+  contents: write   # needed to publish the model as a Release
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350   # hosted runners hard-cap at 6 hours
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install transformers peft sentencepiece gguf protobuf numpy
+          pip install llama-cpp-python   # for the smoke test
+
+      - name: Get llama.cpp converter
+        run: git clone --depth 1 https://github.com/ggml-org/llama.cpp.git
+
+      - name: Build llama-quantize (K-quants only)
+        if: ${{ !startsWith(github.event.inputs.quant, 'q8') && github.event.inputs.quant != 'f16' }}
+        run: |
+          cmake -S llama.cpp -B llama.cpp/build -DLLAMA_CURL=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake --build llama.cpp/build --target llama-quantize -j"$(nproc)"
+
+      - name: Build voice dataset
+        run: python voice/make_voice_dataset.py --out voice_data.jsonl --n "${{ github.event.inputs.dataset_size }}"
+
+      - name: Fine-tune on CPU (LoRA)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}   # only needed for gated bases like Llama
+        run: |
+          EXTRA=""
+          # gradient checkpointing keeps 1B+ models inside runner memory
+          case "${{ github.event.inputs.base_model }}" in
+            *1.5B*|*1.7B*|*-1B*) EXTRA="--grad_checkpoint" ;;
+          esac
+          python voice/finetune_mira.py \
+            --base "${{ github.event.inputs.base_model }}" \
+            --data voice_data.jsonl \
+            --out mira-hf \
+            --steps "${{ github.event.inputs.steps }}" $EXTRA
+
+      - name: Package mira.mdlo (v2)
+        run: |
+          QBIN=""
+          [ -f llama.cpp/build/bin/llama-quantize ] && QBIN="--quantize_bin llama.cpp/build/bin/llama-quantize"
+          python voice/package_mdlo.py \
+            --model mira-hf \
+            --out mira.mdlo \
+            --llama_cpp llama.cpp \
+            --quant "${{ github.event.inputs.quant }}" $QBIN \
+            --base_model "${{ github.event.inputs.base_model }}" \
+            --finetune_steps "${{ github.event.inputs.steps }}"
+
+      - name: Smoke test the artifact
+        run: python voice/run_mira.py --model mira.mdlo --selftest
+
+      - name: Upload mira.mdlo
+        uses: actions/upload-artifact@v4
+        with:
+          name: mira-voice-mdlo
+          path: mira.mdlo
+          retention-days: 30
+
+      # Also publish to a Release: permanent download URL, 2 GB/file limit,
+      # survives past artifact retention.
+      - name: Publish model release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="mira-$(date +%Y%m%d-%H%M)"
+          gh release create "$TAG" mira.mdlo \
+            --title "Mira $TAG" \
+            --notes "base: ${{ github.event.inputs.base_model }} | steps: ${{ github.event.inputs.steps }} | quant: ${{ github.event.inputs.quant }}"

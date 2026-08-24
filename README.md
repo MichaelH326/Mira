@@ -91,3 +91,50 @@ tests/
 Mira is an educational-scale model, and — true to its own values — this README won't overclaim. At under a million parameters trained on a synthetic dataset, Mira's *knowledge* is a small closed fact base (capitals, colors, opposites, single-digit arithmetic, spelling, definitions, calendar order), and its language understanding is limited to short, simple exchanges. What it demonstrates is the *behavioral* contract: within and around that domain it reliably answers what it knows, asks for what's missing, and declines to invent what it can't know — the failure mode it is engineered against is the confident fabrication. Cross-turn memory is limited to the few most recent exchanges (`--history-turns`).
 
 You can also train the same architecture on plain text (e.g. the included Shakespeare corpus) with `python -m mira.train --data data/tinyshakespeare.txt` and sample it with `python -m mira.generate`.
+
+---
+
+# Mira Voice (v2)
+
+The `voice/` directory scales Mira from the educational from-scratch model
+above to a **real conversational model (360M–2B parameters)** with a casual
+phone-call personality — short spoken replies, TTS-ready output — that still
+runs entirely on a laptop CPU.
+
+Since pretraining at that size on CPU is infeasible (billions of tokens),
+v2 **fine-tunes an open Apache-2.0 base** (SmolLM2, Qwen2.5) on a synthetic
+phone-call dialogue dataset, then packages the result into a single
+self-contained **`.mdlo` v2** file (see `MDLO_SPEC.md`): a quantized GGUF
+payload plus persona and settings, verified by checksum.
+
+## Use it
+
+```bash
+pip install llama-cpp-python
+python voice/run_mira.py                     # mira.mdlo next to your shell
+python voice/run_mira.py --speak             # speak replies via espeak/say
+python voice/run_mira.py --tts-cmd 'espeak'  # pipe sentences to any TTS
+```
+
+Replies stream one finished sentence at a time so a TTS engine can start
+speaking while the next sentence generates. Full conversation history is
+kept; when your message is ambiguous, Mira asks one short follow-up instead
+of guessing — the same honesty contract as v1, carried into v2 via training
+data and the baked-in system prompt.
+
+## Build the model
+
+Run the **Train Mira Voice (v2)** workflow from the Actions tab (pick a base
+model, steps, and quantization) — it fine-tunes on the CPU runner, packages
+`mira.mdlo`, smoke-tests it, uploads it as an artifact, and publishes it as
+a GitHub Release. 360M–0.5B bases fit comfortably in one run; for 1.5B+ use
+~50–100 steps or fine-tune locally. `steps: 0` skips training and packages
+the base with Mira's persona (always fits, any size).
+
+## Toward a fully-own pretrained Mira
+
+`voice/make_dolma_voice.py` streams Ai2's open **Dolma** corpus (ODC-By, see
+`ATTRIBUTION.md`), keeps only casual spoken-register documents, and rewrites
+them TTS-friendly (numbers spelled out, symbols stripped) — a pretraining
+corpus for training your own architecture from scratch on a rented GPU,
+with the phone-call dialogues as the final phase.

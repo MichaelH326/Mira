@@ -3,3 +3,11 @@ __pycache__/
 checkpoints/
 .venv/
 venv/
+# trained models / training byproducts (v2 voice pipeline)
+*.mdlo
+*.gguf
+mira-hf/
+voice_data.jsonl
+voice_corpus/
+llama.cpp/
+*.log
