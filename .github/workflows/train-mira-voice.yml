@@ -25,6 +25,9 @@ on:
 permissions:
   contents: write   # needed to publish the model as a Release
 
+env:
+  PYTHONUNBUFFERED: "1"   # stream logs live; otherwise print() is block-buffered
+
 jobs:
   train:
     runs-on: ubuntu-latest
