@@ -68,13 +68,35 @@ PERMISSIVE_SOURCES = {
 CODE = re.compile(r"```|\bdef \w+\(|\bclass \w+[:(]|</?\w+>|\bimport \b|;\s*$|\{\s*\"", re.M)
 MATH = re.compile(r"\\\(|\\\[|\$\$|\\frac|\\begin\{|\^\{|_\{")
 TABLE = re.compile(r"\|.*\|.*\||\+[-=]{3,}\+")
-LIST = re.compile(r"^\s*(?:[-*+]\s+|\d+[.)]\s+)", re.M)
+LIST = re.compile(r"^\s*(?:[-*+•]\s+|\d+\s*[.):-]\s*|[a-z]\)\s+)", re.M | re.I)
+INLINE_ENUM = re.compile(r"(?:\d+\s*[.):-]\s*\w+[,;]?\s*){2,}")
 BOILERPLATE = re.compile(
     r"as an ai|as a language model|i'm just an ai|i cannot fulfill|"
     r"here (?:is|are) (?:a |an |the )?(?:list|steps|example)|"
     r"step \d+:|firstly,|in conclusion|to summarize|let's break (?:this|it) down",
     re.I)
 NON_ASCII = re.compile(r"[^\x00-\x7F]")
+
+# Tulu is multilingual (70+ languages). ASCII checks don't catch Spanish etc.,
+# so require a real density of English function words.
+EN_STOPWORDS = {
+    "the","a","an","and","or","but","if","of","to","in","on","for","with","is",
+    "are","was","were","it","its","that","this","you","your","i","we","they",
+    "he","she","have","has","had","do","does","did","can","will","would","not",
+    "there","what","when","how","why","about","as","at","by","from","be","been",
+}
+FOREIGN_MARKERS = re.compile(
+    r"\b(el|la|los|las|una|uno|del|que|por|para|con|como|más|pero|són|són|és|"
+    r"und|der|die|das|nicht|ist|für|mit|auch|"
+    r"le|les|des|une|est|pour|avec|dans|sur|"
+    r"che|per|con|non|una|sono|"
+    r"em|els|amb|aix|aquest)\b", re.I)
+
+def english_ratio(text: str) -> float:
+    words = re.findall(r"[a-z']+", text.lower())
+    if len(words) < 5:
+        return 0.0
+    return sum(w in EN_STOPWORDS for w in words) / len(words)
 
 
 def usable(user: str, assistant: str, max_user=220, max_assist=1200) -> bool:
@@ -91,8 +113,12 @@ def usable(user: str, assistant: str, max_user=220, max_assist=1200) -> bool:
         return False
     if len(LIST.findall(assistant)) >= 2:          # a real list, not one dash
         return False
+    if INLINE_ENUM.search(assistant):              # "1- x 2- y" style enumerations
+        return False
     if len(NON_ASCII.findall(both)) / len(both) > 0.02:
         return False
+    if english_ratio(assistant) < 0.18 or FOREIGN_MARKERS.search(user + " " + assistant):
+        return False                               # not English
     if user.count("?") == 0 and len(user.split()) > 40:   # long non-question prompt
         return False
     return True
@@ -127,7 +153,7 @@ DESTIFF = [
 
 OPENER_FILLERS = ["", "", "", "honestly, ", "yeah, ", "so, ", "oh, ", "well, "]
 
-NUMTOK = re.compile(r"\$[\d,]+(?:\.\d{2})?|[\d.]+%|\b[\d,]+(?:\.\d+)?\b")
+NUMTOK = re.compile(r"\$[\d,]+(?:\.\d{2})?|[\d.]+%|(?<![a-z\d])[\d,]+(?:\.\d+)?(?![a-z\d])", re.I)
 
 
 def spell_number(tok: str) -> str:
@@ -182,7 +208,11 @@ def casualize(text: str, rng: random.Random, max_sentences=2) -> str:
 
     # trim to a spoken-length reply
     sents = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
-    sents = [s for s in sents if 2 <= len(s.split()) <= 40]
+    # a real spoken sentence: enough words, starts like a sentence not a fragment
+    sents = [s for s in sents
+             if 4 <= len(s.split()) <= 40
+             and not s.startswith(("\"", "'", ",", ";", ":"))
+             and re.match(r"^[a-z]", s)]
     if not sents:
         return ""
     text = " ".join(sents[:max_sentences])
@@ -280,6 +310,28 @@ def main():
             except Exception as e:
                 print(f"  !! {source_key} failed: {e}")
                 print("     (check the dataset id/subset, or your network)")
+
+    # quality report on the converted (non-handcrafted) portion
+    import collections
+    stats = collections.Counter()
+    lens = []
+    with open(args.out, encoding="utf-8") as fh:
+        for i, line in enumerate(fh):
+            if i < n_core:
+                continue
+            for msg in json.loads(line)["messages"]:
+                if msg["role"] == "assistant":
+                    c = msg["content"]
+                    lens.append(len(c.split()))
+                    if FOREIGN_MARKERS.search(c): stats["non-english"] += 1
+                    if re.search(r"[*_`#\[\]{}]", c): stats["markdown left"] += 1
+                    if re.search(r"\d", c):        stats["has digits"] += 1
+                    stats["total"] += 1
+    if stats["total"]:
+        print(f"\nConverted-reply quality ({stats['total']:,} replies):")
+        print(f"  median length : {sorted(lens)[len(lens)//2]} words")
+        for k in ("non-english", "markdown left", "has digits"):
+            print(f"  {k:14s}: {stats[k]} ({100*stats[k]/stats['total']:.1f}%)")
 
     print(f"\nWrote {written:,} conversations to {args.out}")
     print("Attribution: Tulu/Dolma data is ODC-BY (Ai2) — keep ATTRIBUTION.md updated.")
