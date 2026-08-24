@@ -60,6 +60,10 @@ def main():
     p.add_argument("--lora_r", type=int, default=16)
     p.add_argument("--lora_alpha", type=int, default=32)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--save_every", type=int, default=25,
+                   help="save a resumable LoRA checkpoint every N steps (0 = off)")
+    p.add_argument("--resume", action="store_true",
+                   help="resume from the last checkpoint in <out>/ckpt if present")
     p.add_argument("--grad_checkpoint", action="store_true",
                    help="trade speed for memory (recommended for 1B+ bases)")
     args = p.parse_args()
@@ -126,8 +130,32 @@ def main():
     optim = torch.optim.AdamW([pr for pr in model.parameters() if pr.requires_grad], lr=args.lr)
     rng = random.Random(args.seed)
 
+    ckpt_dir = os.path.join(args.out, "ckpt")
+    ckpt_file = os.path.join(ckpt_dir, "state.pt")
+    start_step = 1
+    if args.resume and os.path.exists(ckpt_file):
+        state = torch.load(ckpt_file, map_location="cpu", weights_only=False)
+        model.load_state_dict(state["model"], strict=False)
+        optim.load_state_dict(state["optim"])
+        rng.setstate(state["rng"])
+        start_step = state["step"] + 1
+        print(f"Resumed from step {state['step']} ({ckpt_file})", flush=True)
+
+    def save_ckpt(step):
+        os.makedirs(ckpt_dir, exist_ok=True)
+        tmp = ckpt_file + ".tmp"
+        torch.save({
+            # only the trainable LoRA params: small and fast to write
+            "model": {k: v for k, v in model.state_dict().items() if "lora" in k.lower()},
+            "optim": optim.state_dict(),
+            "rng": rng.getstate(),
+            "step": step,
+        }, tmp)
+        os.replace(tmp, ckpt_file)   # atomic: never leaves a half-written file
+        print(f"  [checkpoint saved at step {step}]", flush=True)
+
     t0, running = time.time(), None
-    for step in range(1, args.steps + 1):
+    for step in range(start_step, args.steps + 1):
         optim.zero_grad(set_to_none=True)
         total = 0.0
         for _ in range(args.grad_accum):
@@ -138,8 +166,11 @@ def main():
         optim.step()
         running = total if running is None else 0.9 * running + 0.1 * total
         if step % 10 == 0 or step == 1 or step == args.steps:
+            done = step - start_step + 1
             print(f"step {step:4d}/{args.steps}  loss {total:.4f}  ema {running:.4f}  "
-                  f"({time.time()-t0:.0f}s, {(time.time()-t0)/step:.1f}s/step)", flush=True)
+                  f"({time.time()-t0:.0f}s, {(time.time()-t0)/done:.1f}s/step)", flush=True)
+        if args.save_every and step % args.save_every == 0 and step != args.steps:
+            save_ckpt(step)
 
     print("Merging LoRA into base weights...", flush=True)
     model = model.merge_and_unload()
