@@ -13,8 +13,8 @@ on:
           - "Qwen/Qwen2.5-1.5B-Instruct"            # ~1.5B — use fewer steps (see README)
           - "HuggingFaceTB/SmolLM2-1.7B-Instruct"   # ~1.7B — use fewer steps (see README)
       steps:
-        description: "Fine-tune steps (0 = skip training, persona-only packaging)"
-        default: "300"
+        description: "Fine-tune steps (100-150 recommended; 0 = persona-only packaging)"
+        default: "150"
       quant:
         description: "Quantization (Q4_K_M recommended; q8_0 = larger but skips the build step)"
         default: "Q4_K_M"

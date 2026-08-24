@@ -51,8 +51,10 @@ def main():
                    help="HF model id or local path (SmolLM2-360M/1.7B, Qwen2.5-0.5B/1.5B, Llama-3.2-1B...)")
     p.add_argument("--data", default="voice_data.jsonl")
     p.add_argument("--out", default="mira-hf")
-    p.add_argument("--steps", type=int, default=300,
-                   help="optimizer steps; 0 = skip training and just re-save the base (persona-only mode)")
+    p.add_argument("--steps", type=int, default=150,
+                   help="optimizer steps; 0 = skip training and just re-save the base (persona-only mode). "
+                        "The dataset is template-based, so too many steps memorizes the templates and "
+                        "erodes the base model's general ability — 100-150 is usually the sweet spot.")
     p.add_argument("--seq_len", type=int, default=512)
     p.add_argument("--batch_size", type=int, default=2)
     p.add_argument("--grad_accum", type=int, default=8)
