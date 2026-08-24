@@ -39,7 +39,13 @@ jobs:
 
       - name: Open dataset converts, is English, and validates
         run: |
-          python voice/make_open_voice_dataset.py --out open.jsonl --n 400
+          # HF streaming can drop a connection; retry before failing the build
+          for attempt in 1 2 3; do
+            python voice/make_open_voice_dataset.py --out open.jsonl --n 400 && break
+            echo "dataset build attempt $attempt failed, retrying..."
+            sleep 10
+          done
+          test -s open.jsonl
           python voice/validate_dataset.py open.jsonl --min-conversations 300
           echo "--- sample converted replies ---"
           python - <<'EOF'

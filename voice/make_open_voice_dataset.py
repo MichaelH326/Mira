@@ -28,7 +28,9 @@ LICENSING: Tulu 3 is ODC-BY overall, but bundles subsets under other terms
 ATTRIBUTION.md updated with whatever you use.
 """
 
+import os
 import re
+import sys
 import json
 import random
 import argparse
@@ -325,8 +327,10 @@ def main():
             print(f"Streaming {SOURCES[source_key][0]} ...", flush=True)
             per_source = n_open // len(args.sources)
             got = 0
+            gen = None
             try:
-                for pairs in iter_rows(source_key, args.permissive_only):
+                gen = iter_rows(source_key, args.permissive_only)
+                for pairs in gen:
                     seen += 1
                     msgs = [{"role": "system", "content": SYSTEM_PROMPT}]
                     for u, a in pairs[: args.max_turns]:
@@ -349,6 +353,15 @@ def main():
             except Exception as e:
                 print(f"  !! {source_key} failed: {e}")
                 print("     (check the dataset id/subset, or your network)")
+            finally:
+                # Breaking out of the loop leaves HF's background prefetch
+                # threads mid-download; closing the generator stops them
+                # before interpreter shutdown.
+                if gen is not None:
+                    try:
+                        gen.close()
+                    except Exception:
+                        pass
 
     # quality report on the converted (non-handcrafted) portion
     import collections
@@ -378,3 +391,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # The dataset is written and flushed at this point. HF's streaming stack
+    # keeps worker threads alive that can abort during interpreter shutdown
+    # (PyGILState_Release -> exit 134), which would fail CI despite the work
+    # having succeeded. Exit immediately instead of running finalizers.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0)
