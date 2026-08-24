@@ -113,11 +113,70 @@ class Speaker:
 
 # ------------------------------ conversation ---------------------------------
 
+_ONES = ["zero","one","two","three","four","five","six","seven","eight","nine","ten",
+         "eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen",
+         "eighteen","nineteen"]
+_TENS = ["","","twenty","thirty","forty","fifty","sixty","seventy","eighty","ninety"]
+
+
+def _int_to_words(n):
+    """Small self-contained integer speller (keeps run_mira dependency-free)."""
+    if n < 0:
+        return "minus " + _int_to_words(-n)
+    if n < 20:
+        return _ONES[n]
+    if n < 100:
+        return _TENS[n // 10] + ("-" + _ONES[n % 10] if n % 10 else "")
+    if n < 1000:
+        rest = n % 100
+        return _ONES[n // 100] + " hundred" + (" " + _int_to_words(rest) if rest else "")
+    for div, name in ((1_000_000_000, "billion"), (1_000_000, "million"), (1000, "thousand")):
+        if n >= div:
+            rest = n % div
+            return _int_to_words(n // div) + f" {name}" + (" " + _int_to_words(rest) if rest else "")
+    return str(n)
+
+
+def _say_number(m):
+    tok = m.group(0)
+    # year-like: 1995 -> nineteen ninety-five
+    if re.fullmatch(r"\d{4}", tok) and 1100 <= int(tok) <= 2099 and int(tok) % 1000 != 0:
+        hi, lo = int(tok[:2]), int(tok[2:])
+        if lo == 0:
+            return _int_to_words(hi) + " hundred"
+        return f"{_int_to_words(hi)} {_int_to_words(lo) if lo >= 10 else 'oh ' + _int_to_words(lo)}"
+    if "." in tok:
+        whole, frac = tok.split(".", 1)
+        w = _int_to_words(int(whole.replace(",", "") or 0))
+        return w + " point " + " ".join(_int_to_words(int(d)) for d in frac)
+    try:
+        return _int_to_words(int(tok.replace(",", "")))
+    except ValueError:
+        return tok
+
+
+def numbers_to_speech(text):
+    """Digits are fine on screen but wrong for TTS; say them as words."""
+    text = re.sub(r"(\d)\s*-\s*(\d)", r"\1 to \2", text)          # 15-20 -> 15 to 20
+    def _money(m):
+        whole, cents = m.group(1).replace(",", ""), m.group(2)
+        out = _int_to_words(int(whole)) + (" dollar" if whole == "1" else " dollars")
+        if cents and int(cents):
+            out += " and " + _int_to_words(int(cents)) + " cents"
+        return out
+    text = re.sub(r"\$\s*([\d,]+)(?:\.(\d{2}))?", _money, text)
+    text = re.sub(r"([\d,.]+)\s*%",
+                  lambda m: _say_number(re.match(r"[\d,.]+", m.group(1))) + " percent", text)
+    text = re.sub(r"(?<![a-zA-Z\d])[\d,]+(?:\.\d+)?(?![a-zA-Z\d])", _say_number, text)
+    return text
+
+
 def clean_for_speech(text):
     """Safety net: strip anything a TTS engine would stumble on."""
     text = re.sub(r"[*_#`>|~\[\]{}]", "", text)          # markdown leftovers
     text = re.sub(r"[\U0001F000-\U0001FAFF\u2600-\u27BF]", "", text)  # emoji
     text = "".join(c for c in text if c.isprintable() or c.isspace())  # control chars
+    text = numbers_to_speech(text)
     return re.sub(r"\s+", " ", text).strip()
 
 
