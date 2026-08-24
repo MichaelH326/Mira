@@ -13,8 +13,8 @@ on:
           - "Qwen/Qwen2.5-1.5B-Instruct"            # ~1.5B — use fewer steps (see README)
           - "HuggingFaceTB/SmolLM2-1.7B-Instruct"   # ~1.7B — use fewer steps (see README)
       steps:
-        description: "Fine-tune steps (0 = skip training, persona-only packaging)"
-        default: "300"
+        description: "Fine-tune steps (100-150 recommended; 0 = persona-only packaging)"
+        default: "150"
       quant:
         description: "Quantization (Q4_K_M recommended; q8_0 = larger but skips the build step)"
         default: "Q4_K_M"
@@ -55,6 +55,15 @@ jobs:
           cmake -S llama.cpp -B llama.cpp/build -DLLAMA_CURL=OFF -DCMAKE_BUILD_TYPE=Release
           cmake --build llama.cpp/build --target llama-quantize -j"$(nproc)"
 
+      # Restores the LoRA checkpoint from a previous run of this workflow,
+      # so a timed-out or cancelled run resumes instead of starting over.
+      - name: Restore training checkpoint
+        uses: actions/cache@v4
+        with:
+          path: mira-hf/ckpt
+          key: mira-ckpt-${{ github.event.inputs.base_model }}-${{ github.run_id }}
+          restore-keys: mira-ckpt-${{ github.event.inputs.base_model }}-
+
       - name: Build voice dataset
         run: python voice/make_voice_dataset.py --out voice_data.jsonl --n "${{ github.event.inputs.dataset_size }}"
 
@@ -71,7 +80,8 @@ jobs:
             --base "${{ github.event.inputs.base_model }}" \
             --data voice_data.jsonl \
             --out mira-hf \
-            --steps "${{ github.event.inputs.steps }}" $EXTRA
+            --steps "${{ github.event.inputs.steps }}" \
+            --resume $EXTRA
 
       - name: Package mira.mdlo (v2)
         run: |
