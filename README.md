@@ -149,6 +149,10 @@ python voice/finetune_mira.py --data voice_data_big.jsonl --steps 400
 A quarter of the output (`--core_frac`) is drawn from the handcrafted persona
 and abstention set so Mira's identity and honesty behaviors stay strong, and
 `--permissive_only` (on by default) skips non-commercially-licensed subsets.
+Safety-refusal subsets (WildGuardMix, WildJailbreak, CoCoNot) and generic
+"I'm sorry, but I can't help with that" replies are dropped too: a 400-step
+run trained with them refused plain questions like "how many minutes are in
+an hour". Mira's declines come from the handcrafted set, which says why.
 With this dataset you can train considerably longer without memorizing.
 
 ## Understanding: what helps, and how to measure it

@@ -24,6 +24,7 @@ MARKDOWN = re.compile(r"[*_`#\[\]{}|]|^\s*\d+[.):-]\s", re.M)
 EMOJI = re.compile(r"[\U0001F000-\U0001FAFF\u2600-\u27BF]")
 URL = re.compile(r"https?://|www\.")
 BOILERPLATE = re.compile(r"as an ai|as a language model|i'm just an ai", re.I)
+from make_open_voice_dataset import REFUSAL  # noqa: E402  (shared definition)
 
 
 def main():
@@ -33,6 +34,9 @@ def main():
     p.add_argument("--max-foreign-pct", type=float, default=1.0)
     p.add_argument("--max-markdown-pct", type=float, default=1.0)
     p.add_argument("--max-boilerplate-pct", type=float, default=0.5)
+    p.add_argument("--max-refusal-pct", type=float, default=2.0,
+                   help="generic 'sorry, I can't help with that' replies; too many and "
+                        "Mira learns to refuse plain questions")
     p.add_argument("--min-unique-pct", type=float, default=15.0,
                    help="unique assistant replies as %% of all replies; low means "
                         "the model will memorize templates instead of generalizing")
@@ -72,6 +76,7 @@ def main():
                     if EMOJI.search(c):         bad["emoji"] += 1
                     if URL.search(c):           bad["urls"] += 1
                     if BOILERPLATE.search(c):   bad["ai boilerplate"] += 1
+                    if REFUSAL.search(c):       bad["generic refusals"] += 1
                     low = c.lower()
                     if "don't know" in low or "no idea" in low or "no clue" in low:
                         behaviors["says I don't know"] += 1
@@ -113,6 +118,9 @@ def main():
         failures.append(f"markdown/lists {100*bad['markdown/lists']/n:.1f}% > {args.max_markdown_pct}%")
     if 100.0 * bad["ai boilerplate"] / n > args.max_boilerplate_pct:
         failures.append(f"ai boilerplate {100*bad['ai boilerplate']/n:.1f}% > {args.max_boilerplate_pct}%")
+    if 100.0 * bad["generic refusals"] / n > args.max_refusal_pct:
+        failures.append(f"generic refusals {100*bad['generic refusals']/n:.1f}% > "
+                        f"{args.max_refusal_pct}% — Mira would learn to refuse plain questions")
     if bad["empty replies"]:
         failures.append(f"{bad['empty replies']} empty replies")
     if unique_pct < args.min_unique_pct:

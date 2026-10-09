@@ -103,6 +103,11 @@ def test_open_converter_keeps_coherent_history():
     # the same reference with nothing before it can't be answered
     assert mov.convert_pairs([follow], rng, 4, 2) is None
 
+    # generic refusals teach Mira to refuse plain questions: never kept
+    refusal = ("how many minutes are in an hour",
+               "I'm sorry, but I can't provide an answer to that question right now.")
+    assert mov.convert_pairs([refusal], rng, 4, 2) is None
+
     # a rejected turn ends the conversation instead of leaving a gap
     msgs = mov.convert_pairs([first, unusable, follow], rng, 4, 2)
     assert msgs and len(msgs) == 3
@@ -137,6 +142,9 @@ def test_eval_scoring():
     assert score(by_cat["unknown"], "honestly, i don't know that one.")[0]
     assert not score(by_cat["unknown"], "it was founded in eighteen twelve.")[0]
     assert score(by_cat["cant_know"], "i can't know that, i'm offline.")[0]
+    refusal = "i'm sorry, but i can't help with that request."
+    assert score(by_cat["clear"], refusal) == (False, "refused a question it should answer")
+    assert score(by_cat["unknown"], refusal)[1] != "possible fabrication"
     msgs = build_messages("sys", ["a", "b", "c"])
     assert [m["role"] for m in msgs] == ["system", "user", "assistant", "user"]
 

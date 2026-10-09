@@ -68,12 +68,15 @@ jobs:
 
       # Restores the LoRA checkpoint from a previous run of this workflow,
       # so a timed-out or cancelled run resumes instead of starting over.
+      # Keyed on the data recipe (base, dataset, and the scripts that build and
+      # train on it): a changed recipe starts fresh instead of continuing a
+      # model trained on different data.
       - name: Restore training checkpoint
         uses: actions/cache@v4
         with:
           path: mira-hf/ckpt
-          key: mira-ckpt-${{ github.event.inputs.base_model }}-${{ github.run_id }}
-          restore-keys: mira-ckpt-${{ github.event.inputs.base_model }}-
+          key: mira-ckpt-${{ inputs.base_model }}-${{ inputs.dataset }}-${{ inputs.dataset_size }}-${{ hashFiles('voice/make_voice_dataset.py', 'voice/make_open_voice_dataset.py', 'voice/finetune_mira.py') }}-${{ github.run_id }}
+          restore-keys: mira-ckpt-${{ inputs.base_model }}-${{ inputs.dataset }}-${{ inputs.dataset_size }}-${{ hashFiles('voice/make_voice_dataset.py', 'voice/make_open_voice_dataset.py', 'voice/finetune_mira.py') }}-
 
       - name: Build voice dataset
         run: |

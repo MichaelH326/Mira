@@ -66,6 +66,20 @@ MATH = re.compile(r"\\\(|\\\[|\$\$|\\frac|\\begin\{|\^\{|_\{")
 TABLE = re.compile(r"\|.*\|.*\||\+[-=]{3,}\+")
 LIST = re.compile(r"^\s*(?:[-*+•]\s+|\d+\s*[.):-]\s*|[a-z]\)\s+)", re.M | re.I)
 INLINE_ENUM = re.compile(r"(?:\d+\s*[.):-]\s*\w+[,;]?\s*){2,}")
+# Safety/noncompliance training sets: mostly "I'm sorry, but I can't help
+# with that". Permissively licensed, but a model fine-tuned on them learns to
+# refuse plain questions (a 400-step run answered "how many minutes are in an
+# hour" with "i'm sorry, but i can't provide an answer"). Mira's own declines
+# come from the handcrafted set, which says *why* she can't answer.
+REFUSAL_SOURCES = {"wildguardmix", "wildjailbreak", "coconot"}
+
+# Generic refusals from any source: declining without saying why.
+REFUSAL = re.compile(
+    r"\b(?:i'?m sorry|i apologi[sz]e|sorry),? (?:but )?i (?:can'?t|cannot|am unable|'m unable|won'?t)|"
+    r"\bi (?:can'?t|cannot|won'?t) (?:help|assist|provide|fulfill|comply|answer|do that|create)|"
+    r"\bi'?m (?:not able|unable) to (?:help|assist|provide|answer)",
+    re.I)
+
 BOILERPLATE = re.compile(
     r"as an ai|as a language model|i'm just an ai|i cannot fulfill|"
     r"here (?:is|are) (?:a |an |the )?(?:list|steps|example)|"
@@ -123,6 +137,8 @@ def usable(user: str, assistant: str, max_user=220, max_assist=1200,
         return False
     if BOILERPLATE.search(assistant):
         return False
+    if REFUSAL.search(assistant[:200]):
+        return False                               # generic refusal, see REFUSAL_SOURCES
     if len(LIST.findall(assistant)) >= 2:          # a real list, not one dash
         return False
     if INLINE_ENUM.search(assistant):              # "1- x 2- y" style enumerations
@@ -292,7 +308,7 @@ def convert_pairs(pairs, rng: random.Random, max_turns: int, max_sentences: int)
 
 # ---------------------------------------------------------------------------
 
-def iter_rows(source_key, permissive_only):
+def iter_rows(source_key, permissive_only, keep_refusal_sources=False):
     from datasets import load_dataset
     ds_id, subset = SOURCES[source_key]
     ds = load_dataset(ds_id, subset, split="train", streaming=True) if subset \
@@ -301,6 +317,10 @@ def iter_rows(source_key, permissive_only):
         if permissive_only and source_key.startswith("tulu"):
             src = str(row.get("source") or row.get("dataset") or "")
             if src and not any(p in src for p in PERMISSIVE_SOURCES):
+                continue
+        if not keep_refusal_sources:
+            src = str(row.get("source") or row.get("dataset") or "")
+            if any(r in src for r in REFUSAL_SOURCES):
                 continue
         msgs = row.get("messages") or []
         pairs = []
@@ -323,6 +343,9 @@ def main():
     p.add_argument("--permissive_only", action="store_true", default=True,
                    help="skip Tulu subsets with non-commercial licenses")
     p.add_argument("--all_licenses", dest="permissive_only", action="store_false")
+    p.add_argument("--keep_refusal_sources", action="store_true",
+                   help="keep safety/noncompliance subsets (off by default: they teach "
+                        "Mira to refuse plain questions)")
     p.add_argument("--seed", type=int, default=0)
     args = p.parse_args()
 
@@ -347,7 +370,7 @@ def main():
             got = 0
             gen = None
             try:
-                gen = iter_rows(source_key, args.permissive_only)
+                gen = iter_rows(source_key, args.permissive_only, args.keep_refusal_sources)
                 for pairs in gen:
                     seen += 1
                     msgs = convert_pairs(pairs, rng, args.max_turns, args.max_sentences)
