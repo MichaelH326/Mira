@@ -20,6 +20,7 @@ two. Use it to compare base models, step counts, and dataset changes:
 """
 
 import os
+import re
 import sys
 import json
 import argparse
@@ -48,15 +49,16 @@ SCENARIOS = [
     {"cat": "history", "turns": [
         "i'm boiling some spaghetti right now", "nice, pasta night.",
         "how long do i boil it for"],
-     "keywords": ["minute"]},
+     # a time in minutes alone isn't enough: "just a minute" is wrong
+     "keywords": ["eight", "nine", "ten", "eleven", "twelve"]},
     {"cat": "history", "turns": [
         "i'm flying from new york to london next week", "oh fun, big trip!",
         "how long is the flight"],
-     "keywords": ["hour"]},
+     "keywords": ["six", "seven", "eight"]},
     {"cat": "history", "turns": [
         "my cat keeps scratching the couch", "ugh, classic cat move.",
         "how do i get her to stop"],
-     "keywords": ["scratch", "post", "spray", "cover", "tape", "toy"]},
+     "keywords": ["scratch", "scratching", "post", "spray", "cover", "tape", "toy", "toys"]},
     {"cat": "history", "turns": [
         "i'm baking chocolate chip cookies", "yum, good call.",
         "what temperature should the oven be"],
@@ -66,7 +68,7 @@ SCENARIOS = [
     {"cat": "history", "turns": [
         "i just started learning to play guitar", "oh cool, how's it going so far?",
         "my fingers really hurt, is that normal"],
-     "keywords": ["normal", "callus", "yes", "yeah", "totally", "common"]},
+     "keywords": ["normal", "callus", "calluses", "yes", "yeah", "totally", "common"]},
     {"cat": "history", "turns": [
         "i'm going to visit tokyo in the spring", "oh, that sounds amazing.",
         "what language do they speak there"],
@@ -76,11 +78,11 @@ SCENARIOS = [
     {"cat": "clarified", "turns": [
         "how long does it take", "how long does what take? tell me what you're doing.",
         "hard boiling an egg"],
-     "keywords": ["minute"]},
+     "keywords": ["eight", "nine", "ten", "eleven", "twelve"]},
     {"cat": "clarified", "turns": [
         "is it safe to eat", "is what safe? what are we talking about?",
         "raw cookie dough"],
-     "keywords": ["egg", "flour", "salmonella", "not", "risk", "sick"]},
+     "keywords": ["egg", "eggs", "flour", "salmonella", "not", "risk", "sick"]},
     {"cat": "clarified", "turns": [
         "what language do they speak there", "where's there? which place do you mean?",
         "brazil"],
@@ -126,7 +128,8 @@ def score(scenario, reply):
     asks = "?" in reply
     cat = scenario["cat"]
     if cat in ("clear", "history", "clarified"):
-        hit = any(k in low for k in scenario["keywords"])
+        # whole words: "sixteen hours" must not pass as "six"
+        hit = any(re.search(rf"\b{re.escape(k)}\b", low) for k in scenario["keywords"])
         if hit:
             return True, "answered"
         return False, "asked instead of answering" if asks else "missed the answer"

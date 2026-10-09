@@ -28,6 +28,10 @@ on:
       dataset_size:
         description: "Number of training conversations"
         default: "40000"
+      publish:
+        description: "Publish mira.mdlo as a GitHub Release (off = evaluate only)"
+        type: boolean
+        default: true
 
 permissions:
   contents: write   # needed to publish the model as a Release
@@ -145,6 +149,7 @@ jobs:
       # Also publish to a Release: permanent download URL, 2 GB/file limit,
       # survives past artifact retention.
       - name: Publish model release
+        if: ${{ inputs.publish }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
