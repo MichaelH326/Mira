@@ -101,6 +101,9 @@ jobs:
             python voice/validate_dataset.py voice_data.jsonl --min-unique-pct 0
           fi
 
+      # --max_minutes stops training with room left in the 350-minute job for
+      # merging, packaging and the eval; the checkpoint cache then saves
+      # (it only does on success), so rerunning resumes where this one stopped.
       - name: Fine-tune on CPU (LoRA)
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}   # only needed for gated bases like Llama
@@ -115,6 +118,7 @@ jobs:
             --data voice_data.jsonl \
             --out mira-hf \
             --steps "${{ github.event.inputs.steps }}" \
+            --max_minutes 255 \
             --resume $EXTRA
 
       - name: Package mira.mdlo (v2)

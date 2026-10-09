@@ -178,6 +178,15 @@ def test_finetune_runs_and_resumes():
         r = subprocess.run(cmd + ["--steps", "3", "--resume"], capture_output=True, text=True)
         assert r.returncode == 0, r.stdout + r.stderr
         assert "Resumed from step 1" in r.stdout
+
+        # a spent time budget stops early but still saves a usable model
+        out2 = os.path.join(td, "out2")
+        cmd2 = [c if c != out else out2 for c in cmd]
+        r = subprocess.run(cmd2 + ["--steps", "50", "--max_minutes", "0.0001"],
+                           capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert "Time budget" in r.stdout and "at step 1/50" in r.stdout, r.stdout
+        assert os.path.exists(os.path.join(out2, "config.json"))
         assert os.path.exists(os.path.join(out, "config.json"))
 
 

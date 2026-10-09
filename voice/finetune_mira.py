@@ -107,6 +107,10 @@ def main():
                    help="save a resumable LoRA checkpoint every N steps (0 = off)")
     p.add_argument("--resume", action="store_true",
                    help="resume from the last checkpoint in <out>/ckpt if present")
+    p.add_argument("--max_minutes", type=float, default=0,
+                   help="stop training after this many minutes, save a checkpoint, and still "
+                        "merge and save the model (0 = no limit). Keeps CI runs inside the "
+                        "job time limit so packaging and the eval always run.")
     p.add_argument("--grad_checkpoint", action="store_true",
                    help="trade speed for memory (recommended for 1B+ bases)")
     args = p.parse_args()
@@ -217,6 +221,11 @@ def main():
                   f"({time.time()-t0:.0f}s, {(time.time()-t0)/done:.1f}s/step)", flush=True)
         if args.save_every and step % args.save_every == 0 and step != args.steps:
             save_ckpt(step)
+        if args.max_minutes and time.time() - t0 > args.max_minutes * 60 and step != args.steps:
+            print(f"Time budget of {args.max_minutes:g} min reached at step {step}/{args.steps}; "
+                  f"stopping early (rerun with --resume to continue)", flush=True)
+            save_ckpt(step)
+            break
 
     print("Merging LoRA into base weights...", flush=True)
     model = model.merge_and_unload()
