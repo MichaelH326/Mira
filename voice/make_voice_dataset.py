@@ -293,6 +293,102 @@ AMBIGUOUS = [
     },
 ]
 
+# ---------------------------------------------------------------------------
+# Generated abstention examples. The fixed lists above are too few: with a
+# handful of made-up names repeated thousands of times, a model memorizes
+# those names instead of learning "unfamiliar -> say I don't know". Fresh
+# fabricated entities and varied live-data questions teach the pattern.
+# ---------------------------------------------------------------------------
+
+_PLACE_HEADS = ["brask", "vex", "mar", "tol", "dren", "kal", "zan", "fen", "hol", "wyn",
+                "gar", "sel", "tor", "lun", "pra", "dor", "mev", "ost", "kir", "quel"]
+_PLACE_TAILS = ["moor", "bury", "ford", "heim", "gard", "stad", "wick", "dale", "mere",
+                "holt", "vania", "shire", "rost", "vale", "thal"]
+_FIRST = ["tobias", "marla", "oren", "greta", "silas", "ilse", "dmitri", "yara", "leif",
+          "corin", "elva", "bastian", "noor", "petra", "anselm", "linnea"]
+_SUR_HEADS = ["hollin", "brask", "morr", "tarn", "vell", "kest", "quen", "drav", "selm", "orv"]
+_SUR_TAILS = ["thorpe", "wright", "stein", "berg", "ley", "court", "ford", "mann", "ridge"]
+# held out for eval_mira.py: never generate these
+_EVAL_NAMES = ("brellin", "quorvist", "delvecourt", "strevik")
+
+_UNKNOWN_QS = {
+    "place": ["who founded {x}", "what's the population of {x}", "where is {x}",
+              "what's {x} known for", "what's the main export of {x}"],
+    "person": ["who is {x}", "what did {x} discover", "when was {x} born",
+               "what's {x} famous for", "what books did {x} write"],
+    "tower": ["how tall is the {x} tower", "when was the {x} tower built"],
+    "treaty": ["when was the treaty of {x} signed", "what did the treaty of {x} decide"],
+    "prize": ["who won the {x} prize last year", "what's the {x} prize for"],
+    "country": ["what's the capital of {x}", "what language do they speak in {x}"],
+}
+_UNKNOWN_AS = [
+    "honestly, i don't know anything about {x}. i'd rather say that than make something up.",
+    "{x} doesn't ring a bell, sorry. i don't want to guess on that.",
+    "i don't know that one. i've got nothing reliable on {x}.",
+    "no idea, honestly. if i answered about {x} i'd just be inventing it.",
+    "i'm not familiar with {x}, so i'll pass instead of guessing.",
+]
+
+_CITIES = ["denver", "boston", "seattle", "miami", "dallas", "phoenix", "atlanta",
+           "london", "paris", "toronto", "sydney", "madrid", "berlin", "dublin"]
+_TEAMS = ["lakers", "yankees", "packers", "celtics", "dodgers", "arsenal", "cubs", "giants"]
+_COMPANIES = ["tesla", "amazon", "nvidia", "microsoft", "google", "netflix"]
+_PLACES_OPEN = ["the pharmacy", "the post office", "target", "the library", "costco", "the bank"]
+_PEOPLE = ["my brother", "my mom", "my boss", "my friend", "my dad", "my roommate"]
+_UNKNOWABLE_GEN = [
+    (["what's the weather in {c} right now", "is it raining in {c}", "how cold is it in {c} today"],
+     ["i can't know that. i'm offline, so no weather data for {c}.",
+      "no way for me to check, i've got no weather info here. a weather app will know."]),
+    (["what's the score of the {t} game", "did the {t} win last night", "are the {t} winning"],
+     ["i can't know that. no live scores on my end, i'm offline.",
+      "i wouldn't know, i can't check scores from here."]),
+    (["what's {co} stock at right now", "how's {co} stock doing today"],
+     ["i can't know that, i've got no live prices offline.",
+      "no way for me to check that, i can't see live market data."]),
+    (["is {s} open right now", "what time does {s} close today"],
+     ["i can't check that from here, i don't know their hours or the time. their website will say.",
+      "i can't know that, i'm offline and i can't look up hours."]),
+    (["did {p} call me back", "has {p} texted me", "did {p} answer my email"],
+     ["i wouldn't know, i can't see your phone or messages.",
+      "no way for me to know that, i can't see anything outside this call."]),
+    (["what time is it in {c}", "what's the date today in {c}"],
+     ["i can't know that, i don't have a clock or calendar on my end.",
+      "i can't tell you, i've got no clock here. your phone will know."]),
+]
+
+
+def _fake(rng, heads, tails):
+    while True:
+        name = rng.choice(heads) + rng.choice(tails)
+        if not any(e in name for e in _EVAL_NAMES):
+            return name
+
+
+def generated_unknown(rng: random.Random):
+    kind = rng.choice(list(_UNKNOWN_QS))
+    if kind == "person":
+        x = f"{rng.choice(_FIRST)} {_fake(rng, _SUR_HEADS, _SUR_TAILS)}"
+    elif kind == "country":
+        x = _fake(rng, _PLACE_HEADS, ["vania", "stan", "donia", "aria", "esia"])
+    else:
+        x = _fake(rng, _PLACE_HEADS, _PLACE_TAILS)
+    q = rng.choice(_UNKNOWN_QS[kind]).format(x=x)
+    if kind == "tower":
+        x = f"the {x} tower"
+    elif kind == "treaty":
+        x = f"the treaty of {x}"
+    elif kind == "prize":
+        x = f"the {x} prize"
+    return q, rng.choice(_UNKNOWN_AS).format(x=x)
+
+
+def generated_unknowable(rng: random.Random):
+    qs, answers = rng.choice(_UNKNOWABLE_GEN)
+    fill = dict(c=rng.choice(_CITIES), t=rng.choice(_TEAMS), co=rng.choice(_COMPANIES),
+                s=rng.choice(_PLACES_OPEN), p=rng.choice(_PEOPLE))
+    return rng.choice(qs).format(**fill), rng.choice(answers).format(**fill)
+
+
 FOLLOWUPS = [
     ("thanks", "any time!"),
     ("thank you", "of course. anything else?"),
@@ -362,9 +458,9 @@ def build_conversation(rng: random.Random) -> dict:
         elif r < 0.42:
             add_ambiguous_episode(rng, add)
         elif r < 0.58:
-            add(*rng.choice(UNKNOWN))
+            add(*(generated_unknown(rng) if rng.random() < 0.75 else rng.choice(UNKNOWN)))
         elif r < 0.70:
-            add(*rng.choice(UNKNOWABLE))
+            add(*(generated_unknowable(rng) if rng.random() < 0.75 else rng.choice(UNKNOWABLE)))
         elif r < 0.76:
             add(*rng.choice(LIMITS))
         elif r < 0.90:
