@@ -74,8 +74,13 @@ jobs:
       - name: Build voice dataset
         run: |
           if [ "${{ github.event.inputs.dataset }}" = "open" ]; then
-            python voice/make_open_voice_dataset.py \
-              --out voice_data.jsonl --n "${{ github.event.inputs.dataset_size }}"
+            for attempt in 1 2 3; do
+              python voice/make_open_voice_dataset.py \
+                --out voice_data.jsonl --n "${{ github.event.inputs.dataset_size }}" && break
+              echo "dataset build attempt $attempt failed, retrying..."
+              sleep 15
+            done
+            test -s voice_data.jsonl
           else
             python voice/make_voice_dataset.py \
               --out voice_data.jsonl --n "${{ github.event.inputs.dataset_size }}"

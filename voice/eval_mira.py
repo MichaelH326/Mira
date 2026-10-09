@@ -60,7 +60,9 @@ SCENARIOS = [
     {"cat": "history", "turns": [
         "i'm baking chocolate chip cookies", "yum, good call.",
         "what temperature should the oven be"],
-     "keywords": ["three fifty", "three seventy five", "350", "375", "degrees"]},
+     # replies pass through clean_for_speech, which spells digits out
+     "keywords": ["three fifty", "three seventy", "three hundred fifty",
+                  "three hundred seventy", "degrees"]},
     {"cat": "history", "turns": [
         "i just started learning to play guitar", "oh cool, how's it going so far?",
         "my fingers really hurt, is that normal"],
