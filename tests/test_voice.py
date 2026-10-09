@@ -164,13 +164,13 @@ def test_finetune_runs_and_resumes():
         LlamaForCausalLM(LlamaConfig(
             vocab_size=len(tok), hidden_size=32, intermediate_size=64,
             num_hidden_layers=2, num_attention_heads=2, num_key_value_heads=2,
-            max_position_embeddings=1024,
+            max_position_embeddings=2048,
         )).save_pretrained(base)
 
         out = os.path.join(td, "out")
         cmd = [sys.executable, os.path.join(VOICE, "finetune_mira.py"), "--base", base,
                "--data", data, "--out", out, "--batch_size", "2", "--grad_accum", "1",
-               "--seq_len", "256"]
+               "--seq_len", "1024"]   # a 400-token vocab makes the system prompt very long
         r = subprocess.run(cmd + ["--steps", "2", "--save_every", "1"],
                            capture_output=True, text=True)
         assert r.returncode == 0, r.stdout + r.stderr

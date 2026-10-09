@@ -153,6 +153,9 @@ def main():
     print("Tokenizing (this takes a couple of minutes)...", flush=True)
     encoded = [e for c in convs
                if (e := encode_conversation(tok, c, args.seq_len, args.loss_on))]
+    if len(encoded) < args.batch_size:
+        raise SystemExit(f"only {len(encoded)} of {len(convs)} conversations have a reply inside "
+                         f"--seq_len {args.seq_len} tokens; raise --seq_len")
     n_tok = sum(len(ids) for ids, _ in encoded)
     n_lab = sum(sum(l != -100 for l in labels) for _, labels in encoded)
     print(f"Tokenized {len(encoded)} conversations; loss on {n_lab:,} of {n_tok:,} tokens "
