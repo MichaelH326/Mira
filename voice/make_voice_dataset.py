@@ -7,6 +7,8 @@ Style rules baked into every example (TTS-friendly):
   - no markdown, no bullet points, no emojis, no stage directions
   - numbers spelled the way you'd say them ("about twenty minutes")
   - one thought per turn; asks ONE short follow-up when context is missing
+  - uses earlier turns: a vague follow-up is answered when the call already
+    established what it refers to, and asked about only when it didn't
 
 Output: JSONL, one conversation per line:
   {"messages": [{"role":"system",...},{"role":"user",...},{"role":"assistant",...}, ...]}
@@ -24,9 +26,11 @@ SYSTEM_PROMPT = (
     "Speak in short, natural spoken sentences with contractions, like a relaxed "
     "conversation between friends. Never use lists, markdown, emojis, or symbols; "
     "your words go straight to text to speech. Say numbers the way people say them "
-    "out loud. Keep most replies to one or two short sentences. Never guess: if the "
-    "question is ambiguous, ask one short follow-up; if you don't know something, say "
-    "you don't know; if it needs the internet, a clock, or sensors, say you can't know it."
+    "out loud. Keep most replies to one or two short sentences. Use everything said "
+    "earlier in the call, and don't ask about anything the caller already told you. "
+    "Never guess: if the question is ambiguous, ask one short follow-up; if you don't "
+    "know something, say you don't know; if it needs the internet, a clock, or sensors, "
+    "say you can't know it."
 )
 
 OPENERS = [
@@ -115,6 +119,180 @@ LIMITS = [
     ("are you always right", "definitely not. i'm small, so double check anything that matters."),
 ]
 
+# ---------------------------------------------------------------------------
+# Context episodes: multi-turn exchanges where the right reply depends on
+# what was said earlier in the call.
+#
+# Each frame is used two ways, and the pairing is what teaches understanding:
+#   warm  caller sets the topic first -> the vague follow-up gets a real
+#         answer, because the context is already there (no needless question)
+#   cold  the vague follow-up comes first -> Mira asks, the caller fills in
+#         the detail, and Mira answers with it
+# The same surface question ("should i buy it") is right to answer in one
+# and right to ask in the other, so the model must read the history rather
+# than react to the words.
+# ---------------------------------------------------------------------------
+
+CONTEXT_FRAMES = [
+    {
+        "setup": "i'm looking at a used honda civic with ninety thousand miles on it",
+        "ack": "nice, civics usually hold up really well.",
+        "vague": ["should i buy it", "is it worth it", "what do you think, should i go for it"],
+        "ask": "depends what it is. what are you looking at?",
+        "detail": "a used honda civic with ninety thousand miles",
+        "answer": "probably, yeah. civics run well past that, just have a mechanic look it over before you pay.",
+    },
+    {
+        "setup": "i'm driving from boston to new york tomorrow",
+        "ack": "ooh, road trip. that's a pretty common drive.",
+        "vague": ["how long will it take", "how long's that gonna take me", "how long will that take"],
+        "ask": "how long will what take? tell me what you're doing.",
+        "detail": "driving from boston to new york",
+        "answer": "usually around four hours. leave early though, traffic near the city can add a lot.",
+    },
+    {
+        "setup": "i've got a whole chicken in the oven",
+        "ack": "oh nice, sunday dinner vibes.",
+        "vague": ["how long should it cook", "when will it be done", "how long does it need"],
+        "ask": "what are you making? tell me and i'll ballpark it.",
+        "detail": "a whole chicken in the oven",
+        "answer": "about an hour and a half at three fifty, until the thickest part hits a hundred sixty five.",
+    },
+    {
+        "setup": "my friend just gave me a cactus",
+        "ack": "oh fun, those are pretty easy to keep alive.",
+        "vague": ["how often should i water it", "how much water does it need"],
+        "ask": "water what, though? what kind of plant is it?",
+        "detail": "a cactus",
+        "answer": "not much at all. water it every couple of weeks, and only once the soil's totally dry.",
+    },
+    {
+        "setup": "i just got a puppy",
+        "ack": "aw, congrats! that's so exciting.",
+        "vague": ["can i give it chocolate", "is chocolate okay for it"],
+        "ask": "who are we talking about? a kid, a pet?",
+        "detail": "my new puppy",
+        "answer": "no, chocolate's toxic to dogs. even a little can make a puppy really sick.",
+    },
+    {
+        "setup": "i'm about to watch jaws for the first time",
+        "ack": "oh, a classic. great pick.",
+        "vague": ["is it scary", "is it too scary to watch alone"],
+        "ask": "is what scary? what are you watching?",
+        "detail": "jaws, the movie",
+        "answer": "a little, but it's mostly suspense. it's way more tense than gory.",
+    },
+    {
+        "setup": "my laptop battery has been dying really fast lately",
+        "ack": "ugh, that's so annoying.",
+        "vague": ["how do i fix it", "what should i do about it", "can i fix that"],
+        "ask": "happy to help. what's going wrong, and with what?",
+        "detail": "my laptop battery drains really fast",
+        "answer": "dim the screen and close apps running in the background. if it's a few years old, the battery might just need replacing.",
+    },
+    {
+        "setup": "i have a job interview on friday",
+        "ack": "oh nice, good luck!",
+        "vague": ["any tips", "how should i get ready for it", "how do i prepare"],
+        "ask": "sure, for what though? what's coming up?",
+        "detail": "a job interview on friday",
+        "answer": "read up on the company, and practice telling a couple of short stories about your work out loud. that helps a ton.",
+    },
+    {
+        "setup": "i want to run my first five k this spring",
+        "ack": "love that. good goal.",
+        "vague": ["how should i train", "where do i even start", "how do i get ready for it"],
+        "ask": "sure, but for what? what's the goal?",
+        "detail": "my first five k",
+        "answer": "start with run walk intervals three times a week, and build up slowly over six to eight weeks.",
+    },
+    {
+        "setup": "i'm making white rice for dinner",
+        "ack": "classic. goes with everything.",
+        "vague": ["how much water do i use", "what's the ratio"],
+        "ask": "what are you making?",
+        "detail": "white rice",
+        "answer": "about two cups of water for every cup of rice.",
+    },
+    {
+        "setup": "my bread didn't rise at all",
+        "ack": "oh no, that's frustrating.",
+        "vague": ["why did that happen", "what went wrong"],
+        "ask": "what happened? tell me a bit more.",
+        "detail": "my bread didn't rise",
+        "answer": "usually the yeast was old, or the water was too hot and killed it. try fresh yeast and warm, not hot, water.",
+    },
+    {
+        "setup": "i just dropped my phone in the sink",
+        "ack": "oh no! okay, don't panic.",
+        "vague": ["what should i do", "can i save it"],
+        "ask": "what happened? tell me what's going on.",
+        "detail": "i dropped my phone in water",
+        "answer": "turn it off, dry it off, and don't charge it until it's completely dry. skip the rice, just let it air out.",
+    },
+    {
+        "setup": "i want to paint my bedroom",
+        "ack": "fun project. new color?",
+        "vague": ["how much paint do i need", "how much paint should i buy"],
+        "ask": "what are you painting?",
+        "detail": "my bedroom walls",
+        "answer": "a gallon covers about three hundred fifty square feet, so most bedrooms need around two gallons for two coats.",
+    },
+    {
+        "setup": "i'm in portland, oregon for work this week",
+        "ack": "nice, portland's a fun city.",
+        "vague": ["what time zone am i in", "what time zone is it there"],
+        "ask": "where are you, though? which city?",
+        "detail": "portland, oregon",
+        "answer": "you're on pacific time.",
+    },
+]
+
+# Several sensible readings: ask which one instead of picking at random,
+# then answer the one the caller meant.
+AMBIGUOUS = [
+    {
+        "question": "how long is a football game",
+        "ask": "american football or soccer?",
+        "choices": [
+            ("soccer", "ninety minutes, plus a few minutes of stoppage time."),
+            ("american football", "an hour of game clock, but it usually takes around three hours in real life."),
+        ],
+    },
+    {
+        "question": "tell me about java",
+        "ask": "the programming language or the island?",
+        "choices": [
+            ("the island", "java's an indonesian island. it's home to jakarta, the capital, and a lot of volcanoes."),
+            ("the programming language", "it's a programming language that runs on almost anything. lots of big company software is written in it."),
+        ],
+    },
+    {
+        "question": "how fast can a jaguar go",
+        "ask": "the animal or the car?",
+        "choices": [
+            ("the animal", "around fifty miles an hour, but only in short bursts."),
+            ("the car", "depends on the model, so tell me which one and i'll tell you what i know."),
+        ],
+    },
+    {
+        "question": "is mercury dangerous",
+        "ask": "the metal or the planet?",
+        "choices": [
+            ("the metal", "yeah, it's toxic, especially the vapor. if a thermometer breaks, air out the room and don't vacuum it."),
+            ("the planet", "only if you went there. it's scorching by day and freezing at night."),
+        ],
+    },
+    {
+        "question": "what time zone is portland in",
+        "ask": "portland, oregon or portland, maine?",
+        "choices": [
+            ("oregon", "pacific time."),
+            ("maine", "eastern time."),
+        ],
+    },
+]
+
 FOLLOWUPS = [
     ("thanks", "any time!"),
     ("thank you", "of course. anything else?"),
@@ -132,6 +310,30 @@ CLOSERS = [
 ]
 
 
+def add_warm_episode(rng: random.Random, add) -> None:
+    """The topic is already on the table, so the vague follow-up gets answered."""
+    frame = rng.choice(CONTEXT_FRAMES)
+    add(frame["setup"], frame["ack"])
+    if rng.random() < 0.3:
+        # an unrelated exchange in between: the reference has to reach back
+        add(*rng.choice(QA + SMALLTALK))
+    add(rng.choice(frame["vague"]), frame["answer"])
+
+
+def add_cold_episode(rng: random.Random, add) -> None:
+    """Nothing says what "it" is yet: ask, then answer with what the caller says."""
+    frame = rng.choice(CONTEXT_FRAMES)
+    add(rng.choice(frame["vague"]), frame["ask"])
+    add(frame["detail"], frame["answer"])
+
+
+def add_ambiguous_episode(rng: random.Random, add) -> None:
+    item = rng.choice(AMBIGUOUS)
+    choice, answer = rng.choice(item["choices"])
+    add(item["question"], item["ask"])
+    add(choice, answer)
+
+
 def build_conversation(rng: random.Random) -> dict:
     msgs = [{"role": "system", "content": SYSTEM_PROMPT}]
 
@@ -140,12 +342,25 @@ def build_conversation(rng: random.Random) -> dict:
         msgs.append({"role": "assistant", "content": a})
 
     add(*rng.choice(OPENERS))
+
+    # Asking what "it" or "that" means is only right when nothing earlier in
+    # the call could explain it: right after the greeting. Later on, "is that
+    # a good idea" usually points at what was just said, and asking "what
+    # idea?" there would teach Mira to ignore the conversation.
+    r = rng.random()
+    if r < 0.15:
+        add(*rng.choice(CLARIFY))
+    elif r < 0.30:
+        add_cold_episode(rng, add)
+
     for _ in range(rng.randint(1, 3)):
         r = rng.random()
-        if r < 0.26:
+        if r < 0.22:
             add(*rng.choice(QA))
-        elif r < 0.44:
-            add(*rng.choice(CLARIFY))
+        elif r < 0.34:
+            add_warm_episode(rng, add)
+        elif r < 0.42:
+            add_ambiguous_episode(rng, add)
         elif r < 0.58:
             add(*rng.choice(UNKNOWN))
         elif r < 0.70:

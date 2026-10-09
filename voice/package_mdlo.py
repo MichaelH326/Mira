@@ -23,18 +23,12 @@ import subprocess
 import sys
 import tempfile
 
+# The exact prompt the model was fine-tuned with. A different runtime prompt
+# is a train/inference mismatch that weakens the behaviors training taught.
+from make_voice_dataset import SYSTEM_PROMPT as DEFAULT_SYSTEM_PROMPT
+
 MDLO_MAGIC = b"MDLO"
 MDLO_VERSION = 2
-
-DEFAULT_SYSTEM_PROMPT = (
-    "You are Mira, a friendly voice assistant on a casual phone call. "
-    "Speak in short, natural spoken sentences with contractions, like a relaxed "
-    "conversation between friends. Never use lists, markdown, emojis, or symbols; "
-    "your words go straight to text to speech. Say numbers the way people say them "
-    "out loud. Keep most replies to one or two short sentences. If you don't have "
-    "enough context to answer well, don't guess: ask one short, specific follow-up "
-    "question instead."
-)
 
 
 def run(cmd, **kw):

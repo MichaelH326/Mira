@@ -151,6 +151,35 @@ and abstention set so Mira's identity and honesty behaviors stay strong, and
 `--permissive_only` (on by default) skips non-commercially-licensed subsets.
 With this dataset you can train considerably longer without memorizing.
 
+## Understanding: what helps, and how to measure it
+
+- **Base model size matters most.** Qwen2.5-1.5B understands far more than
+  SmolLM2-360M and still runs on a laptop CPU at Q4_K_M (about 1 GB).
+- **Training only on Mira's replies.** `finetune_mira.py` puts the loss on
+  Mira's turns only (`--loss_on assistant`, the default), not on the system
+  prompt or the caller's lines, so training goes into how she responds.
+- **Using the conversation.** The handcrafted set includes linked episodes:
+  "should i buy it" is answered when the call already said what "it" is, and
+  asked about only when it didn't, followed by an answer once the caller
+  explains. Ambiguous questions ("how long is a football game") get "which
+  one?" and then the matching answer.
+- **One system prompt.** The packaged model runs with exactly the prompt it
+  was trained with.
+- **Keeping history.** `run_mira.py` trims old turns by token count
+  (`--ctx 4096` by default), so Mira keeps as much of the call as fits.
+
+Measure it on held-out scenarios (none appear in training):
+
+```bash
+python voice/eval_mira.py --model mira.mdlo --show all
+```
+
+It reports an **understanding score** (answers plain questions, answers from
+earlier context, answers after a clarification, asks when something is
+ambiguous) and an **honesty score** (says it doesn't know made-up things,
+says it can't know live data). The training workflow prints both on each
+run's summary page.
+
 ## Verifying changes before a long run
 
 Training takes hours, so breakage should surface in minutes:

@@ -45,6 +45,44 @@ def load_conversations(path):
     return convs
 
 
+def encode_conversation(tok, conv, seq_len, loss_on="assistant"):
+    """Tokenize one conversation. Returns (input_ids, labels) or None.
+
+    With loss_on="assistant", labels are -100 everywhere except Mira's own
+    replies (and the end-of-turn token after each, so she learns to stop).
+    Training on every token would spend most of the gradient memorizing the
+    system prompt, identical in every example, and imitating the caller's
+    lines; masking puts all of it on how Mira responds to what was said.
+    """
+    text = tok.apply_chat_template(conv, tokenize=False, add_generation_prompt=False)
+    enc = tok(text, truncation=True, max_length=seq_len,
+              return_offsets_mapping=loss_on == "assistant")
+    ids = enc["input_ids"]
+    if loss_on != "assistant":
+        return ids, list(ids)
+
+    # Character span of each assistant turn: from where its content starts
+    # (the prompt rendered up to that turn, plus the generation header) to
+    # the end of the turn rendered in full.
+    spans = []
+    for i, msg in enumerate(conv):
+        if msg["role"] != "assistant":
+            continue
+        start = tok.apply_chat_template(conv[:i], tokenize=False, add_generation_prompt=True)
+        end = tok.apply_chat_template(conv[: i + 1], tokenize=False, add_generation_prompt=False)
+        if not (text.startswith(end) and end.startswith(start)):
+            raise ValueError("chat template is not prefix-stable; use --loss_on all")
+        spans.append((len(start), len(end)))
+
+    labels = [-100] * len(ids)
+    for k, (s, _) in enumerate(enc["offset_mapping"]):
+        if any(a <= s < b for a, b in spans):
+            labels[k] = ids[k]
+    if all(l == -100 for l in labels):
+        return None        # every reply was truncated away: nothing to learn
+    return ids, labels
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--base", default="HuggingFaceTB/SmolLM2-360M-Instruct",
@@ -62,6 +100,9 @@ def main():
     p.add_argument("--lora_r", type=int, default=16)
     p.add_argument("--lora_alpha", type=int, default=32)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--loss_on", choices=["assistant", "all"], default="assistant",
+                   help="assistant = learn only from Mira's replies (recommended); "
+                        "all = also from the system prompt and the caller's lines")
     p.add_argument("--save_every", type=int, default=25,
                    help="save a resumable LoRA checkpoint every N steps (0 = off)")
     p.add_argument("--resume", action="store_true",
@@ -109,23 +150,23 @@ def main():
     convs = load_conversations(args.data)
     print(f"Dataset: {len(convs)} conversations", flush=True)
 
-    def encode(conv):
-        text = tok.apply_chat_template(conv, tokenize=False, add_generation_prompt=False)
-        ids = tok(text, truncation=True, max_length=args.seq_len)["input_ids"]
-        return ids
-
     print("Tokenizing (this takes a couple of minutes)...", flush=True)
-    encoded = [encode(c) for c in convs]
-    print(f"Tokenized {len(encoded)} conversations; starting training", flush=True)
+    encoded = [e for c in convs
+               if (e := encode_conversation(tok, c, args.seq_len, args.loss_on))]
+    n_tok = sum(len(ids) for ids, _ in encoded)
+    n_lab = sum(sum(l != -100 for l in labels) for _, labels in encoded)
+    print(f"Tokenized {len(encoded)} conversations; loss on {n_lab:,} of {n_tok:,} tokens "
+          f"({100 * n_lab / max(n_tok, 1):.0f}%, --loss_on {args.loss_on}); starting training",
+          flush=True)
 
     def get_batch(rng):
         picks = rng.sample(encoded, args.batch_size)
-        maxlen = max(len(x) for x in picks)
+        maxlen = max(len(ids) for ids, _ in picks)
         input_ids, labels, attn = [], [], []
-        for ids in picks:
+        for ids, lab in picks:
             pad = maxlen - len(ids)
             input_ids.append(ids + [tok.pad_token_id] * pad)
-            labels.append(ids + [-100] * pad)          # loss only on real tokens
+            labels.append(lab + [-100] * pad)          # no loss on padding
             attn.append([1] * len(ids) + [0] * pad)
         return (torch.tensor(input_ids), torch.tensor(labels), torch.tensor(attn))
 

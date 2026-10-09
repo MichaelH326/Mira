@@ -153,10 +153,28 @@ def chat_turn(llm, messages, chat_cfg, speaker, show_text=True):
     return " ".join(sentences)
 
 
+def fit_history(llm, messages, n_ctx, reply_tokens):
+    """Drop the oldest exchanges until the transcript fits the context window.
+
+    Counts real tokens rather than messages, so a call of short turns keeps
+    as much history as fits (that's what lets Mira resolve "it" and "that"
+    from earlier), while one long message can't overflow the window.
+    The system prompt and the newest message are always kept.
+    """
+    budget = n_ctx - reply_tokens - 32
+
+    def size(m):   # content plus a few tokens of chat-template framing
+        return len(llm.tokenize(m["content"].encode("utf-8"), add_bos=False)) + 6
+
+    while len(messages) > 2 and sum(size(m) for m in messages) > budget:
+        del messages[1:3 if len(messages) > 3 else 2]
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--model", default="mira.mdlo")
-    p.add_argument("--ctx", type=int, default=2048, help="context window tokens")
+    p.add_argument("--ctx", type=int, default=4096,
+                   help="context window tokens; more keeps more of the call in mind")
     p.add_argument("--threads", type=int, default=None, help="CPU threads (default: all)")
     p.add_argument("--tts-cmd", default=None,
                    help="shell command that reads a sentence on stdin and speaks it, e.g. 'espeak'")
@@ -220,12 +238,9 @@ def main():
             continue
 
         messages.append({"role": "user", "content": user_msg})
+        fit_history(llm, messages, args.ctx, chat_cfg.get("max_reply_tokens", 120))
         reply = chat_turn(llm, messages, chat_cfg, speaker)
         messages.append({"role": "assistant", "content": reply})
-
-        # keep the transcript inside the context window: drop oldest turns
-        while len(messages) > 40:
-            del messages[1:3]
 
 
 if __name__ == "__main__":

@@ -30,6 +30,9 @@ jobs:
           pip install transformers peft sentencepiece gguf protobuf numpy datasets num2words
           pip install llama-cpp-python
 
+      - name: Unit tests (loss masking, context episodes, converter, tiny fine-tune)
+        run: python tests/test_voice.py
+
       - name: Handcrafted dataset builds and validates
         run: |
           python voice/make_voice_dataset.py --out hand.jsonl --n 300
@@ -71,6 +74,11 @@ jobs:
 
       - name: Inference runs and Mira replies
         run: python voice/run_mira.py --model mira.mdlo --selftest
+
+      # Report only: a 3-step fine-tune isn't expected to score well, this
+      # proves the eval runs end to end on a real packaged model.
+      - name: Understanding eval runs
+        run: python voice/eval_mira.py --model mira.mdlo --show all
 
       - name: Summary
         run: |

@@ -123,6 +123,13 @@ jobs:
       - name: Smoke test the artifact
         run: python voice/run_mira.py --model mira.mdlo --selftest
 
+      # Held-out understanding + honesty scores, shown on the run's summary
+      # page so base models and step counts can be compared run to run.
+      - name: Evaluate understanding
+        run: |
+          python voice/eval_mira.py --model mira.mdlo --show all | tee eval.txt
+          { echo '## Mira eval'; echo '```'; cat eval.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload mira.mdlo
         uses: actions/upload-artifact@v4
         with:

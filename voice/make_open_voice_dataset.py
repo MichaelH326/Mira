@@ -39,15 +39,9 @@ try:
 except ImportError:
     HAVE_N2W = False
 
-SYSTEM_PROMPT = (
-    "You are Mira, a friendly voice assistant on a casual phone call. "
-    "Speak in short, natural spoken sentences with contractions, like a relaxed "
-    "conversation between friends. Never use lists, markdown, emojis, or symbols; "
-    "your words go straight to text to speech. Say numbers the way people say them "
-    "out loud. Keep most replies to one or two short sentences. Never guess: if the "
-    "question is ambiguous, ask one short follow-up; if you don't know something, say "
-    "you don't know; if it needs the internet, a clock, or sensors, say you can't know it."
-)
+# Shared with the handcrafted set and package_mdlo.py, so the prompt Mira is
+# trained with is exactly the one it runs with.
+from make_voice_dataset import SYSTEM_PROMPT
 
 SOURCES = {
     "tulu":     ("allenai/tulu-3-sft-mixture", None),
@@ -114,7 +108,8 @@ REFERENTIAL_ANY = re.compile(
 QUOTE_SOUP = re.compile(r'"[^"]{3,}"[^.?!]{0,40}"[^"]{3,}"')
 
 
-def usable(user: str, assistant: str, max_user=220, max_assist=1200) -> bool:
+def usable(user: str, assistant: str, max_user=220, max_assist=1200,
+           first_turn: bool = True) -> bool:
     if not user or not assistant:
         return False
     if not (8 <= len(user) <= max_user):
@@ -137,8 +132,11 @@ def usable(user: str, assistant: str, max_user=220, max_assist=1200) -> bool:
     if user.count("?") == 0 and len(user.split()) > 40:   # long non-question prompt
         return False
     u = user.strip()
-    if REFERENTIAL_START.match(u) or REFERENTIAL_ANY.search(u):
-        return False                           # needs context we dropped
+    # "is that one better?" is only unanswerable when nothing came before it.
+    # Later turns keep their history, and those are exactly the examples that
+    # teach Mira to resolve references from the conversation.
+    if first_turn and (REFERENTIAL_START.match(u) or REFERENTIAL_ANY.search(u)):
+        return False                           # needs context we don't have
     if QUOTE_SOUP.search(assistant):           # leftover list of titles
         return False
     return True
@@ -270,6 +268,26 @@ def clean_user(text: str) -> str:
     return text
 
 
+def convert_pairs(pairs, rng: random.Random, max_turns: int, max_sentences: int):
+    """Turn (user, assistant) pairs into one spoken-register conversation.
+
+    Stops at the first pair that can't be used rather than skipping it: a
+    later turn may refer to the dropped one, and keeping it would teach Mira
+    to answer references whose context isn't in the conversation.
+    Returns the message list, or None if no pair was usable.
+    """
+    msgs = [{"role": "system", "content": SYSTEM_PROMPT}]
+    for u, a in pairs[:max_turns]:
+        if not usable(u, a, first_turn=len(msgs) == 1):
+            break
+        cu, ca = clean_user(u), casualize(a, rng, max_sentences)
+        if len(ca.split()) < 3 or len(cu.split()) < 2:
+            break
+        msgs.append({"role": "user", "content": cu})
+        msgs.append({"role": "assistant", "content": ca})
+    return msgs if len(msgs) >= 3 else None
+
+
 # ---------------------------------------------------------------------------
 
 def iter_rows(source_key, permissive_only):
@@ -328,16 +346,8 @@ def main():
             try:
                 for pairs in iter_rows(source_key, args.permissive_only):
                     seen += 1
-                    msgs = [{"role": "system", "content": SYSTEM_PROMPT}]
-                    for u, a in pairs[: args.max_turns]:
-                        if not usable(u, a):
-                            continue
-                        cu, ca = clean_user(u), casualize(a, rng, args.max_sentences)
-                        if len(ca.split()) < 3 or len(cu.split()) < 2:
-                            continue
-                        msgs.append({"role": "user", "content": cu})
-                        msgs.append({"role": "assistant", "content": ca})
-                    if len(msgs) >= 3:
+                    msgs = convert_pairs(pairs, rng, args.max_turns, args.max_sentences)
+                    if msgs:
                         f.write(json.dumps({"messages": msgs}) + "\n")
                         written += 1
                         got += 1
