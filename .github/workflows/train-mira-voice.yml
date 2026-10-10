@@ -6,11 +6,11 @@ on:
       base_model:
         description: "Pretrained base to fine-tune"
         type: choice
-        default: "HuggingFaceTB/SmolLM2-360M-Instruct"
+        default: "Qwen/Qwen2.5-1.5B-Instruct"
         options:
           - "HuggingFaceTB/SmolLM2-360M-Instruct"   # ~360M — comfortable in one run
           - "Qwen/Qwen2.5-0.5B-Instruct"            # ~500M — comfortable in one run
-          - "Qwen/Qwen2.5-1.5B-Instruct"            # ~1.5B — use fewer steps (see README)
+          - "Qwen/Qwen2.5-1.5B-Instruct"            # ~1.5B — best eval scores; ~3 min/step on CPU
           - "HuggingFaceTB/SmolLM2-1.7B-Instruct"   # ~1.7B — use fewer steps (see README)
       steps:
         description: "Fine-tune steps (400+ ok with the open dataset; 150 for handcrafted)"
@@ -28,6 +28,9 @@ on:
       dataset_size:
         description: "Number of training conversations"
         default: "40000"
+      core_frac:
+        description: "Share of handcrafted honesty/asking examples in the open dataset"
+        default: "0.5"
       publish:
         description: "Publish mira.mdlo as a GitHub Release (off = evaluate only)"
         type: boolean
@@ -75,15 +78,16 @@ jobs:
         uses: actions/cache@v4
         with:
           path: mira-hf/ckpt
-          key: mira-ckpt-${{ inputs.base_model }}-${{ inputs.dataset }}-${{ inputs.dataset_size }}-${{ hashFiles('voice/make_voice_dataset.py', 'voice/make_open_voice_dataset.py', 'voice/finetune_mira.py') }}-${{ github.run_id }}
-          restore-keys: mira-ckpt-${{ inputs.base_model }}-${{ inputs.dataset }}-${{ inputs.dataset_size }}-${{ hashFiles('voice/make_voice_dataset.py', 'voice/make_open_voice_dataset.py', 'voice/finetune_mira.py') }}-
+          key: mira-ckpt-${{ inputs.base_model }}-${{ inputs.dataset }}-${{ inputs.dataset_size }}-${{ inputs.core_frac }}-${{ hashFiles('voice/make_voice_dataset.py', 'voice/make_open_voice_dataset.py', 'voice/finetune_mira.py') }}-${{ github.run_id }}
+          restore-keys: mira-ckpt-${{ inputs.base_model }}-${{ inputs.dataset }}-${{ inputs.dataset_size }}-${{ inputs.core_frac }}-${{ hashFiles('voice/make_voice_dataset.py', 'voice/make_open_voice_dataset.py', 'voice/finetune_mira.py') }}-
 
       - name: Build voice dataset
         run: |
           if [ "${{ github.event.inputs.dataset }}" = "open" ]; then
             for attempt in 1 2 3; do
               python voice/make_open_voice_dataset.py \
-                --out voice_data.jsonl --n "${{ github.event.inputs.dataset_size }}" && break
+                --out voice_data.jsonl --n "${{ github.event.inputs.dataset_size }}" \
+                --core_frac "${{ github.event.inputs.core_frac }}" && break
               echo "dataset build attempt $attempt failed, retrying..."
               sleep 15
             done

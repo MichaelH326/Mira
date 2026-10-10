@@ -184,6 +184,27 @@ ambiguous) and an **honesty score** (says it doesn't know made-up things,
 says it can't know live data). The training workflow prints both on each
 run's summary page.
 
+### Measured results
+
+`eval_mira.py` on its 28 held-out scenarios (21 understanding, 7 honesty),
+all trained on the GitHub Actions CPU runner. The set is small, so a few
+points either way is noise.
+
+| Model | Training | Understanding | Honesty | Made-up answers |
+|---|---|---|---|---|
+| SmolLM2-360M | ~400 steps | 33% | 29% | 5/7 |
+| Qwen2.5-0.5B | none (prompt only) | 62% | 0% | 6/7 |
+| Qwen2.5-0.5B | 400 steps | 43% | 57% | 3/7 |
+| Qwen2.5-1.5B | none (prompt only) | 71% | 29% | 6/7 |
+| Qwen2.5-1.5B | 71 steps, open mix | 67% | 86% | 1/7 |
+| Qwen2.5-1.5B | 77 steps, handcrafted only | 67% | 86% | 1/7 |
+
+What this shows: the system prompt alone doesn't stop a model from
+inventing facts; fine-tuning on the honesty examples does. Fine-tuning also
+costs some general knowledge, much less on the 1.5B base. Qwen2.5-1.5B is the
+default base for that reason; at Q4_K_M it is about 1 GB and runs on a
+laptop CPU.
+
 ## Verifying changes before a long run
 
 Training takes hours, so breakage should surface in minutes:
