@@ -10,6 +10,10 @@ on:
       run_id:
         description: "Run ID of the training run whose mira-voice-mdlo artifact to evaluate"
         required: true
+      system_prompt:
+        description: "Optional system prompt to use instead of the one baked into the model"
+        required: false
+        default: ""
 
 permissions:
   actions: read     # download another run's artifact
@@ -40,8 +44,12 @@ jobs:
           github-token: ${{ github.token }}
 
       - name: Evaluate
+        env:
+          SYSTEM_PROMPT: ${{ github.event.inputs.system_prompt }}   # env, not inline: no shell injection
         run: |
-          python voice/eval_mira.py --model mira.mdlo --show all \
+          SYS=()
+          [ -n "$SYSTEM_PROMPT" ] && SYS=(--system "$SYSTEM_PROMPT")
+          python voice/eval_mira.py --model mira.mdlo --show all "${SYS[@]}" \
             --json "eval-${{ github.event.inputs.run_id }}.json" | tee eval.txt
           { echo "## Mira eval of run ${{ github.event.inputs.run_id }}"; echo '```'; cat eval.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 

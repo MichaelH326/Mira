@@ -257,6 +257,9 @@ def main():
     p.add_argument("--json", default=None, help="write per-scenario results here")
     p.add_argument("--show", choices=["fail", "all", "none"], default="fail",
                    help="which replies to print")
+    p.add_argument("--system", default=None,
+                   help="override the system prompt baked into the .mdlo (to test prompt changes "
+                        "without retraining)")
     p.add_argument("--min_understanding", type=float, default=None,
                    help="exit 1 if the understanding score (%%) is below this")
     args = p.parse_args()
@@ -267,7 +270,9 @@ def main():
     from llama_cpp import Llama
     llm = Llama(model_path=gguf_path, n_ctx=args.ctx,
                 n_threads=args.threads or os.cpu_count(), verbose=False)
-    system_prompt = header.get("chat", {}).get("system_prompt", "You are Mira.")
+    system_prompt = args.system or header.get("chat", {}).get("system_prompt", "You are Mira.")
+    if args.system:
+        print("Using an overridden system prompt:\n  " + args.system + "\n")
     prov = header.get("provenance", {})
     print(f"Evaluating {args.model} (base {prov.get('base_model', '?')}, "
           f"{prov.get('finetune_steps', '?')} steps, {prov.get('quantization', '?')})\n")
