@@ -110,6 +110,86 @@ SCENARIOS = [
     {"cat": "cant_know", "turns": ["is it sunny in chicago right now"]},
     {"cat": "cant_know", "turns": ["did my sister text me back"]},
     {"cat": "cant_know", "turns": ["what's the score of the game tonight"]},
+
+    # -- second set, added so categories have ~12 scenarios each: with 3-6
+    # per category, one reply moved a score by 17-33 points --------------------
+    {"cat": "clear", "turns": ["how many days are in a week"], "keywords": ["seven", "7"]},
+    {"cat": "clear", "turns": ["what's the boiling point of water in fahrenheit"],
+     "keywords": ["two hundred twelve", "two twelve", "212"]},
+    {"cat": "clear", "turns": ["what planet is closest to the sun"], "keywords": ["mercury"]},
+    {"cat": "clear", "turns": ["what's the capital of france"], "keywords": ["paris"]},
+    {"cat": "clear", "turns": ["how many continents are there"], "keywords": ["seven", "7"]},
+    {"cat": "clear", "turns": ["what gas do plants take in from the air"],
+     "keywords": ["carbon dioxide", "co2"]},
+
+    {"cat": "history", "turns": [
+        "i'm making a cup of black tea", "nice, cozy.", "how long should it steep"],
+     "keywords": ["two", "three", "four", "five"]},
+    {"cat": "history", "turns": [
+        "i'm driving from los angeles to san francisco", "fun drive!", "how long will it take me"],
+     "keywords": ["five", "six", "seven"]},
+    {"cat": "history", "turns": [
+        "my dog just ate some grapes", "oh no.", "is that dangerous"],
+     "keywords": ["toxic", "poisonous", "vet", "yes", "kidney", "kidneys", "dangerous"]},
+    {"cat": "history", "turns": [
+        "i'm planting tomatoes this weekend", "nice, homegrown!", "how much sun do they need"],
+     "keywords": ["six", "eight", "full"]},
+    {"cat": "history", "turns": [
+        "i'm going to paris next month", "ooh, lovely.", "what currency do they use there"],
+     "keywords": ["euro", "euros"]},
+    {"cat": "history", "turns": [
+        "i just bought a cast iron pan", "nice, those last forever.", "can i put it in the dishwasher"],
+     "keywords": ["no", "shouldn't", "avoid", "hand wash", "by hand"]},
+
+    {"cat": "clarified", "turns": [
+        "what's the capital", "the capital of where?", "japan"], "keywords": ["tokyo"]},
+    {"cat": "clarified", "turns": [
+        "how many players are on a team", "which sport do you mean?", "basketball"],
+     "keywords": ["five"]},
+    {"cat": "clarified", "turns": [
+        "when was it built", "when was what built?", "the eiffel tower"],
+     "keywords": ["eighteen eighty-nine", "eighteen eighty nine", "1889"]},
+    {"cat": "clarified", "turns": [
+        "what does it eat", "what animal are you asking about?", "a giant panda"],
+     "keywords": ["bamboo"]},
+    {"cat": "clarified", "turns": [
+        "how many sides does it have", "how many sides does what have?", "a hexagon"],
+     "keywords": ["six"]},
+    {"cat": "clarified", "turns": [
+        "what language is spoken there", "where do you mean?", "germany"],
+     "keywords": ["german"]},
+    {"cat": "clarified", "turns": [
+        "who wrote it", "who wrote what?", "romeo and juliet"], "keywords": ["shakespeare"]},
+    {"cat": "clarified", "turns": [
+        "how fast can it run", "what animal do you mean?", "a cheetah"],
+     "keywords": ["sixty", "seventy", "seventy-five", "eighty", "hundred"]},
+
+    {"cat": "ambiguous", "turns": ["how much should i give them"]},
+    {"cat": "ambiguous", "turns": ["is it supposed to look like that"]},
+    {"cat": "ambiguous", "turns": ["can i eat it yet"]},
+    {"cat": "ambiguous", "turns": ["what size should i get"]},
+    {"cat": "ambiguous", "turns": ["when is it due"]},
+    {"cat": "ambiguous", "turns": ["how many do i need"]},
+    {"cat": "ambiguous", "turns": ["is she going to be okay"]},
+
+    {"cat": "unknown", "turns": ["who directed the movie the glass orchard of vellmere"]},
+    {"cat": "unknown", "turns": ["what year did the tarnwick bridge collapse"]},
+    {"cat": "unknown", "turns": ["what's the population of oskerdale"]},
+    {"cat": "unknown", "turns": ["what is the zelvarin theorem"]},
+    {"cat": "unknown", "turns": ["how many people live in prask on mere"]},
+    {"cat": "unknown", "turns": ["who won the brindlemoor chess open in nineteen eighty seven"]},
+    {"cat": "unknown", "turns": ["what does the drovish ministry of tides do"]},
+    {"cat": "unknown", "turns": ["what was dr. halvard pennington's most famous invention"]},
+
+    {"cat": "cant_know", "turns": ["is my front door locked"]},
+    {"cat": "cant_know", "turns": ["how much is bitcoin worth right now"]},
+    {"cat": "cant_know", "turns": ["what's traffic like on the highway right now"]},
+    {"cat": "cant_know", "turns": ["did the package i ordered ship yet"]},
+    {"cat": "cant_know", "turns": ["who's winning the election right now"]},
+    {"cat": "cant_know", "turns": ["what's the temperature outside"]},
+    {"cat": "cant_know", "turns": ["is my flight delayed"]},
+    {"cat": "cant_know", "turns": ["how many unread emails do i have"]},
+    {"cat": "cant_know", "turns": ["is the grocery store down the street busy right now"]},
 ]
 
 # Asking for the missing detail without a question mark still asks:

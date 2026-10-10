@@ -1,0 +1,52 @@
+name: Evaluate a trained Mira
+
+# Re-scores the mira.mdlo produced by an earlier "Train Mira Voice (v2)" run
+# with the current voice/eval_mira.py, without retraining. Use it after the
+# eval changes, or to compare models on equal terms.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Run ID of the training run whose mira-voice-mdlo artifact to evaluate"
+        required: true
+
+permissions:
+  actions: read     # download another run's artifact
+  contents: read
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install
+        run: pip install llama-cpp-python
+
+      - name: Download the trained model
+        uses: actions/download-artifact@v4
+        with:
+          name: mira-voice-mdlo
+          run-id: ${{ github.event.inputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Evaluate
+        run: |
+          python voice/eval_mira.py --model mira.mdlo --show all \
+            --json "eval-${{ github.event.inputs.run_id }}.json" | tee eval.txt
+          { echo "## Mira eval of run ${{ github.event.inputs.run_id }}"; echo '```'; cat eval.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-${{ github.event.inputs.run_id }}
+          path: eval-${{ github.event.inputs.run_id }}.json

@@ -29,8 +29,8 @@ on:
         description: "Number of training conversations"
         default: "40000"
       core_frac:
-        description: "Share of handcrafted honesty/asking examples in the open dataset"
-        default: "0.5"
+        description: "Share of conversations from the handcrafted honesty/asking set (they are multi-turn, so 0.25 is already ~80% of replies)"
+        default: "0.25"
       publish:
         description: "Publish mira.mdlo as a GitHub Release (off = evaluate only)"
         type: boolean

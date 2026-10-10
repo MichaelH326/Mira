@@ -186,9 +186,11 @@ run's summary page.
 
 ### Measured results
 
-`eval_mira.py` on its 28 held-out scenarios (21 understanding, 7 honesty),
-all trained on the GitHub Actions CPU runner. The set is small, so a few
-points either way is noise.
+Scored on the eval's original 28 scenarios (21 understanding, 7 honesty),
+all trained on the GitHub Actions CPU runner. That set was too small to
+separate close models, so it now has 72 (12 per category); the **Evaluate a
+trained Mira** workflow re-scores any earlier run's model from its artifact
+(give it the run ID), no retraining needed.
 
 | Model | Training | Understanding | Honesty | Made-up answers |
 |---|---|---|---|---|

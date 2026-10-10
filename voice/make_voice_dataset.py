@@ -309,7 +309,8 @@ _FIRST = ["tobias", "marla", "oren", "greta", "silas", "ilse", "dmitri", "yara",
 _SUR_HEADS = ["hollin", "brask", "morr", "tarn", "vell", "kest", "quen", "drav", "selm", "orv"]
 _SUR_TAILS = ["thorpe", "wright", "stein", "berg", "ley", "court", "ford", "mann", "ridge"]
 # held out for eval_mira.py: never generate these
-_EVAL_NAMES = ("brellin", "quorvist", "delvecourt", "strevik")
+_EVAL_NAMES = ("brellin", "quorvist", "delvecourt", "strevik", "vellmere", "tarnwick",
+               "oskerdale", "zelvarin", "prask", "brindlemoor", "drovish", "pennington")
 
 _UNKNOWN_QS = {
     "place": ["who founded {x}", "what's the population of {x}", "where is {x}",
