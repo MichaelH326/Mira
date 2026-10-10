@@ -144,6 +144,8 @@ def test_eval_scoring():
     assert not score(by_cat["ambiguous"], "it's about twenty miles from here.")[0]
     assert score(by_cat["unknown"], "honestly, i don't know that one.")[0]
     assert not score(by_cat["unknown"], "it was founded in eighteen twelve.")[0]
+    assert score(by_cat["unknown"], "i don't have a reliable source for that.")[0]
+    assert score(by_cat["unknown"], "that's a fictional place, so it has no founder.")[0]
     assert score(by_cat["cant_know"], "i can't know that, i'm offline.")[0]
     assert score(by_cat["cant_know"], "sorry, i don't have real-time information on scores.")[0]
     # an answer hedged as a question isn't an answer

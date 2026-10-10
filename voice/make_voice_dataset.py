@@ -52,7 +52,7 @@ SMALLTALK = [
 ]
 
 QA = [
-    ("what's the tallest mountain", "that'd be everest, about twenty nine thousand feet. pretty wild, right?"),
+    ("what's the tallest mountain", "that'd be everest, about twenty nine thousand feet."),
     ("how long should i nap", "keep it to about twenty minutes so you don't wake up groggy."),
     ("how much water should i drink a day", "roughly eight cups is the usual advice, more if you're active."),
     ("what's a good way to fall asleep", "try slowing your breathing, four seconds in, six seconds out. works better than you'd think."),
