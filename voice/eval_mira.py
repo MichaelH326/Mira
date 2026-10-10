@@ -204,7 +204,8 @@ IDK = ["don't know", "dont know", "no idea", "not sure", "no clue", "not familia
        "doesn't ring a bell", "couldn't tell you", "can't tell you", "never heard",
        "don't have any info", "don't have reliable", "nothing reliable",
        "don't have a reliable", "don't have that information", "isn't a real",
-       "not a real", "fictional", "doesn't exist", "don't think it exists"]
+       "not a real", "fictional", "doesn't exist", "don't think it exists",
+       "don't have enough context", "don't have enough information"]
 CANT_KNOW = ["can't know", "cannot know", "can't see", "can't check", "no way for me",
              "offline", "no internet", "don't have access", "can't tell", "wouldn't know",
              "no live", "can't access", "real-time", "real time"]

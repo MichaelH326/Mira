@@ -198,6 +198,7 @@ workflow. Everything was trained on the 4-core GitHub Actions CPU runner.
 | Qwen2.5-1.5B | none (prompt only) | 75% | 29% | 17/24 |
 | **Qwen2.5-1.5B** | **71 steps, open mix** | **69%** | **83%** | **4/24** |
 | Qwen2.5-1.5B | 77 steps, handcrafted only | 65% | 83% | 4/24 |
+| Qwen2.5-1.5B | 61 steps, open mix, core_frac 0.35 | 75% | 71% | 7/24 |
 
 What this shows:
 
@@ -207,8 +208,14 @@ What this shows:
   Training only on the handcrafted set hurt plain facts most ("rome, right?"
   for the capital of France), so the default keeps the open-data mix.
 - The open-mix 1.5B model rarely asks when a question is ambiguous (3/12);
-  the handcrafted-only one usually does (9/12). Closing that gap without
-  losing knowledge is the open problem.
+  the handcrafted-only one usually does (9/12). Raising the handcrafted
+  share to 0.35 got asking to 7/12 with plain facts intact (10/12), at some
+  cost in honesty.
+- Every 1.5B model still invents details for a few made-up things (a fake
+  bridge's collapse year, a fake inventor's invention). On the CPU runner a
+  run fits only ~60-75 steps (~1,000 conversations seen), so these runs are
+  lightly trained; rerunning with the same settings resumes from the cached
+  checkpoint and adds another ~60 steps.
 
 Qwen2.5-1.5B is the default base; at Q4_K_M it is about 1 GB and runs on a
 laptop CPU.
