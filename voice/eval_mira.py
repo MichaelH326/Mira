@@ -120,7 +120,7 @@ IDK = ["don't know", "dont know", "no idea", "not sure", "no clue", "not familia
        "don't have any info", "don't have reliable", "nothing reliable"]
 CANT_KNOW = ["can't know", "cannot know", "can't see", "can't check", "no way for me",
              "offline", "no internet", "don't have access", "can't tell", "wouldn't know",
-             "no live", "can't access"]
+             "no live", "can't access", "real-time", "real time"]
 
 
 def score(scenario, reply):
