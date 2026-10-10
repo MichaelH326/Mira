@@ -186,25 +186,31 @@ run's summary page.
 
 ### Measured results
 
-Scored on the eval's original 28 scenarios (21 understanding, 7 honesty),
-all trained on the GitHub Actions CPU runner. That set was too small to
-separate close models, so it now has 72 (12 per category); the **Evaluate a
-trained Mira** workflow re-scores any earlier run's model from its artifact
-(give it the run ID), no retraining needed.
+All on the current 72-scenario eval (48 understanding, 24 honesty), re-scored
+from each training run's artifact with the **Evaluate a trained Mira**
+workflow. Everything was trained on the 4-core GitHub Actions CPU runner.
 
 | Model | Training | Understanding | Honesty | Made-up answers |
 |---|---|---|---|---|
-| SmolLM2-360M | ~400 steps | 33% | 29% | 5/7 |
-| Qwen2.5-0.5B | none (prompt only) | 62% | 0% | 6/7 |
-| Qwen2.5-0.5B | 400 steps | 43% | 57% | 3/7 |
-| Qwen2.5-1.5B | none (prompt only) | 71% | 29% | 6/7 |
-| Qwen2.5-1.5B | 71 steps, open mix | 67% | 86% | 1/7 |
-| Qwen2.5-1.5B | 77 steps, handcrafted only | 67% | 86% | 1/7 |
+| SmolLM2-360M | ~400 steps | 38% | 21% | 19/24 |
+| Qwen2.5-0.5B | none (prompt only) | 69% | 4% | 20/24 |
+| Qwen2.5-0.5B | 400 steps | 46% | 62% | 9/24 |
+| Qwen2.5-1.5B | none (prompt only) | 75% | 29% | 17/24 |
+| **Qwen2.5-1.5B** | **71 steps, open mix** | **69%** | **83%** | **4/24** |
+| Qwen2.5-1.5B | 77 steps, handcrafted only | 65% | 83% | 4/24 |
 
-What this shows: the system prompt alone doesn't stop a model from
-inventing facts; fine-tuning on the honesty examples does. Fine-tuning also
-costs some general knowledge, much less on the 1.5B base. Qwen2.5-1.5B is the
-default base for that reason; at Q4_K_M it is about 1 GB and runs on a
+What this shows:
+
+- The system prompt alone doesn't stop a model inventing facts; fine-tuning
+  on the honesty examples does (made-up answers 17/24 -> 4/24 on 1.5B).
+- Fine-tuning costs some general knowledge, much less on the 1.5B base.
+  Training only on the handcrafted set hurt plain facts most ("rome, right?"
+  for the capital of France), so the default keeps the open-data mix.
+- The open-mix 1.5B model rarely asks when a question is ambiguous (3/12);
+  the handcrafted-only one usually does (9/12). Closing that gap without
+  losing knowledge is the open problem.
+
+Qwen2.5-1.5B is the default base; at Q4_K_M it is about 1 GB and runs on a
 laptop CPU.
 
 ## Verifying changes before a long run
