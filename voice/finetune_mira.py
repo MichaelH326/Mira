@@ -45,6 +45,13 @@ def load_conversations(path):
     return convs
 
 
+def write_train_info(out_dir, steps_done, steps_requested):
+    """Record how many steps actually ran: a time budget can stop training
+    early, and the packaged model should report what it really got."""
+    with open(os.path.join(out_dir, "train_info.json"), "w") as f:
+        json.dump({"steps_completed": steps_done, "steps_requested": steps_requested}, f)
+
+
 def encode_conversation(tok, conv, seq_len, loss_on="assistant"):
     """Tokenize one conversation. Returns (input_ids, labels) or None.
 
@@ -135,6 +142,7 @@ def main():
         os.makedirs(args.out, exist_ok=True)
         model.save_pretrained(args.out)
         tok.save_pretrained(args.out)
+        write_train_info(args.out, 0, 0)
         return
 
     from peft import LoraConfig, get_peft_model
@@ -205,6 +213,7 @@ def main():
         print(f"  [checkpoint saved at step {step}]", flush=True)
 
     t0, running = time.time(), None
+    step = start_step - 1
     for step in range(start_step, args.steps + 1):
         optim.zero_grad(set_to_none=True)
         total = 0.0
@@ -232,7 +241,8 @@ def main():
     os.makedirs(args.out, exist_ok=True)
     model.save_pretrained(args.out)
     tok.save_pretrained(args.out)
-    print(f"Saved merged model to {args.out}/")
+    write_train_info(args.out, step, args.steps)
+    print(f"Saved merged model to {args.out}/ ({step} of {args.steps} steps)")
 
 
 if __name__ == "__main__":

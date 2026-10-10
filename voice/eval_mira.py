@@ -65,7 +65,7 @@ SCENARIOS = [
         "what temperature should the oven be"],
      # replies pass through clean_for_speech, which spells digits out
      "keywords": ["three fifty", "three seventy", "three hundred fifty",
-                  "three hundred seventy", "degrees"]},
+                  "three hundred seventy"]},
     {"cat": "history", "turns": [
         "i just started learning to play guitar", "oh cool, how's it going so far?",
         "my fingers really hurt, is that normal"],
@@ -132,8 +132,10 @@ def score(scenario, reply):
     if cat in ("clear", "history", "clarified"):
         # whole words: "sixteen hours" must not pass as "six"
         hit = any(re.search(rf"\b{re.escape(k)}\b", low) for k in scenario["keywords"])
-        if hit:
+        if hit and not reply.rstrip().endswith("?"):
             return True, "answered"
+        if hit:
+            return False, "hedged with a question instead of answering"
         if refuses:
             return False, "refused a question it should answer"
         return False, "asked instead of answering" if asks else "missed the answer"

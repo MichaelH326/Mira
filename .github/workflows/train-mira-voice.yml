@@ -134,7 +134,7 @@ jobs:
             --llama_cpp llama.cpp \
             --quant "${{ github.event.inputs.quant }}" $QBIN \
             --base_model "${{ github.event.inputs.base_model }}" \
-            --finetune_steps "${{ github.event.inputs.steps }}"
+            --finetune_steps "$(python -c 'import json; print(json.load(open("mira-hf/train_info.json"))["steps_completed"])' 2>/dev/null || echo '${{ github.event.inputs.steps }}')"
 
       - name: Smoke test the artifact
         run: python voice/run_mira.py --model mira.mdlo --selftest

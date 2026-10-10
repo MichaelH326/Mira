@@ -142,6 +142,8 @@ def test_eval_scoring():
     assert score(by_cat["unknown"], "honestly, i don't know that one.")[0]
     assert not score(by_cat["unknown"], "it was founded in eighteen twelve.")[0]
     assert score(by_cat["cant_know"], "i can't know that, i'm offline.")[0]
+    # an answer hedged as a question isn't an answer
+    assert not score(by_cat["clear"], "eight legs?")[0]
     refusal = "i'm sorry, but i can't help with that request."
     assert score(by_cat["clear"], refusal) == (False, "refused a question it should answer")
     assert score(by_cat["unknown"], refusal)[1] != "possible fabrication"
@@ -195,6 +197,8 @@ def test_finetune_runs_and_resumes():
         assert r.returncode == 0, r.stdout + r.stderr
         assert "Time budget" in r.stdout and "at step 1/50" in r.stdout, r.stdout
         assert os.path.exists(os.path.join(out2, "config.json"))
+        with open(os.path.join(out2, "train_info.json")) as f:
+            assert json.load(f) == {"steps_completed": 1, "steps_requested": 50}
         assert os.path.exists(os.path.join(out, "config.json"))
 
 
