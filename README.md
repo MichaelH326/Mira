@@ -199,6 +199,7 @@ workflow. Everything was trained on the 4-core GitHub Actions CPU runner.
 | **Qwen2.5-1.5B** | **71 steps, open mix** | **69%** | **83%** | **4/24** |
 | Qwen2.5-1.5B | 77 steps, handcrafted only | 65% | 83% | 4/24 |
 | Qwen2.5-1.5B | 61 steps, open mix, core_frac 0.35 | 75% | 71% | 7/24 |
+| Qwen2.5-1.5B | 122 steps (resumed), open mix, core_frac 0.35 | 67% | 75% | 6/24 |
 
 What this shows:
 
@@ -213,12 +214,29 @@ What this shows:
   cost in honesty.
 - Every 1.5B model still invents details for a few made-up things (a fake
   bridge's collapse year, a fake inventor's invention). On the CPU runner a
-  run fits only ~60-75 steps (~1,000 conversations seen), so these runs are
-  lightly trained; rerunning with the same settings resumes from the cached
-  checkpoint and adds another ~60 steps.
+  run fits only ~60-75 steps (~1,000 conversations seen). Resuming to 122
+  steps did not fix that: honesty barely moved and plain-fact knowledge
+  eroded ("osaka" for the capital of Japan). More of the same fine-tuning
+  is not the lever; see "Where this leaves Mira" below.
 
 Qwen2.5-1.5B is the default base; at Q4_K_M it is about 1 GB and runs on a
 laptop CPU.
+
+### Where this leaves Mira
+
+The best checkpoints (Qwen2.5-1.5B, 61-71 steps) answer plain and
+follow-up questions well, say "I can't know that" for live data nearly
+every time, and decline most made-up entities, but still invent details
+for roughly one made-up thing in four and ask on only some ambiguous
+questions. LoRA fine-tuning on this data plateaus there on a 4-core CPU.
+Likely next levers, roughly in order of expected payoff:
+
+1. **A larger base** (Qwen2.5-3B: about 2 GB at Q4_K_M, still laptop-CPU
+   friendly) knows more and invents less to start with.
+2. **Preference training (DPO)** on pairs of "made-up answer" vs "I don't
+   know", which targets invention directly instead of imitating examples.
+3. **Training on a GPU** (rented or local) so a run sees tens of thousands
+   of conversations instead of ~1,000; inference stays CPU-only.
 
 ## Verifying changes before a long run
 
