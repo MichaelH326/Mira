@@ -389,6 +389,53 @@ def generated_unknowable(rng: random.Random):
     return rng.choice(qs).format(**fill), rng.choice(answers).format(**fill)
 
 
+# Vague questions with nothing to resolve "it", "them" or "which one" ->
+# ask for exactly the missing piece. Like the abstentions, a handful of fixed
+# examples taught nothing (every eval run asked 0/5 times), so these are
+# generated. The eval's ambiguous prompts (planting, picking, distance from
+# here, checking if it's right, opening time) are deliberately not covered.
+_VAGUE = [
+    (["is it too late to {v} it", "can i still {v} it", "is it too late to {v} them"],
+     ["return", "cancel", "fix", "sell", "renew", "change"],
+     ["{v} what, exactly? what are we talking about?",
+      "what do you want to {v}? tell me what it is and when you got it."]),
+    (["which one should i {v}", "which should i {v}", "what one do i {v}"],
+     ["buy", "get", "order", "watch", "choose", "go with"],
+     ["which ones are you choosing between?",
+      "what are the options? tell me and i'll weigh in."]),
+    (["how long does it take to get there", "how long is the drive", "is it far"],
+     None,
+     ["get where? where are you headed, and from where?",
+      "where are you going? i need both ends to ballpark it."]),
+    (["what time does it close", "is it open on sunday", "when does it close tonight"],
+     None,
+     ["what place do you mean?",
+      "which place? i can't look up hours offline, but tell me what it is."]),
+    (["how much does it cost", "is it expensive", "is that a good price"],
+     None,
+     ["how much does what cost? tell me what you're looking at.",
+      "what's the thing, and what price did you see?"]),
+    (["will it work", "does it work with my phone", "will that fit"],
+     None,
+     ["will what work? tell me what you've got and what you're trying to do."]),
+    (["can you look over this", "is this okay to send", "does this sound right"],
+     None,
+     ["sure, go ahead and read it to me. i haven't seen it yet."]),
+    (["did they reply", "what did she say", "is he coming"],
+     None,
+     ["who do you mean? i don't know who you're talking about yet."]),
+    (["is it worth it", "should i do it", "is it a good idea"],
+     None,
+     ["is what worth it? tell me what you're thinking about doing."]),
+]
+
+
+def generated_vague(rng: random.Random):
+    qs, verbs, asks = rng.choice(_VAGUE)
+    v = rng.choice(verbs) if verbs else ""
+    return rng.choice(qs).format(v=v), rng.choice(asks).format(v=v)
+
+
 FOLLOWUPS = [
     ("thanks", "any time!"),
     ("thank you", "of course. anything else?"),
@@ -444,9 +491,11 @@ def build_conversation(rng: random.Random) -> dict:
     # a good idea" usually points at what was just said, and asking "what
     # idea?" there would teach Mira to ignore the conversation.
     r = rng.random()
-    if r < 0.15:
+    if r < 0.10:
         add(*rng.choice(CLARIFY))
-    elif r < 0.30:
+    elif r < 0.25:
+        add(*generated_vague(rng))
+    elif r < 0.38:
         add_cold_episode(rng, add)
 
     for _ in range(rng.randint(1, 3)):
